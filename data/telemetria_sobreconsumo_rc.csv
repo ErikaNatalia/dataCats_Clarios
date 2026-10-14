@@ -1,0 +1,4 @@
+Planta,Consumo_kWh,Presupuesto_kWh,Unidades,Notas
+ensamble,684000,700000,200000,Operacion Nom
+fa,1260000,1300000,207200,Operacion Nom
+rc_energy,864000,780000,200000,Alerta Sobreconsumo Termico Hornos

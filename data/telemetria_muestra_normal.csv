@@ -1,0 +1,4 @@
+Planta,Consumo_kWh,Presupuesto_kWh,Unidades,Notas
+ensamble,675000,700000,200000,Normal
+fa,1230000,1300000,205000,Normal
+rc_energy,750000,780000,200000,Normalizado bajo presupuesto
