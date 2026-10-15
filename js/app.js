@@ -13,7 +13,7 @@
 
   // --- DASHBOARD DATA STORE ---
   const DashboardStore = {
-    currentView: 'landing', // 'landing' | 'detail'
+    currentView: 'landing', // 'landing' | 'detail' | 'sources'
     currentPlantId: 'rc_energy', // 'ensamble' | 'fa' | 'rc_energy'
     faultAcknowledged: false,
 
@@ -21,9 +21,16 @@
     global: {
       totalEnergyKwh: 2808000,
       energyCostUsd: 536960,
+      budgetEnergyKwh: 2799600,
       budgetDeviationPct: 0.3,
       alertCount: 2,
-      lastSyncSeconds: 12
+      lastSyncSeconds: 12,
+      historicalAverage: {
+        totalEnergyKwh: 2870000,
+        energyCostUsd: 548200,
+        budgetDeviationPct: 2.7,
+        alertCount: 4
+      }
     },
 
     // Detailed Plant Datasets
@@ -43,11 +50,20 @@
         costUsd: 81060,
         ratioKwhUnit: 3.42,
         ratioTarget: 3.50,
-        deviationPct: -2.1,
+        deviationPct: -2.3,
         productionUnits: 200000,
         productionType: 'Baterías SLI / EFB',
         sensorsCount: 42,
+        alertCount: 0,
         nodeUri: 'NODE-MTY-AS-01',
+        previous: {
+          kwh: 701000,
+          costUsd: 84120,
+          ratioKwhUnit: 3.51,
+          deviationPct: 0.4,
+          productionUnits: 198000,
+          alertCount: 0
+        },
         alertSnippet: 'Operación dentro de límites ISO 50001 nominales',
         sparklinePoints: [22, 24, 21, 23, 20, 22, 21, 23, 22, 20, 19, 21],
         processes: [
@@ -79,11 +95,20 @@
         costUsd: 151200,
         ratioKwhUnit: 6.08,
         ratioTarget: 6.25,
-        deviationPct: -3.2,
+        deviationPct: -3.1,
         productionUnits: 207200,
         productionType: 'Celdas Formadas',
         sensorsCount: 48,
+        alertCount: 0,
         nodeUri: 'NODE-MTY-FA-02',
+        previous: {
+          kwh: 1299000,
+          costUsd: 155880,
+          ratioKwhUnit: 6.27,
+          deviationPct: 0.5,
+          productionUnits: 205000,
+          alertCount: 0
+        },
         alertSnippet: 'Formación celular en baño ácido sin anomalías térmicas',
         sparklinePoints: [38, 40, 42, 41, 39, 40, 41, 40, 39, 38, 40, 39],
         processes: [
@@ -115,11 +140,20 @@
         costUsd: 103680,
         ratioKwhUnit: 4.32,
         ratioTarget: 3.98,
-        deviationPct: 8.6,
+        deviationPct: 10.8,
         productionUnits: 200000,
         productionType: 'Baterías SLI / AGM',
         sensorsCount: 54,
+        alertCount: 2,
         nodeUri: 'NODE-MTY-RC-01',
+        previous: {
+          kwh: 812000,
+          costUsd: 97440,
+          ratioKwhUnit: 4.11,
+          deviationPct: 2.5,
+          productionUnits: 197500,
+          alertCount: 1
+        },
         alertSnippet: 'Bornes de fundición superan rampa térmica (+14.2% sobre setpoint)',
         sparklinePoints: [25, 27, 26, 30, 28, 32, 38, 42, 45, 41, 39, 44],
         processes: [
@@ -135,7 +169,40 @@
         },
         dailyData: generateDailyCurve(864000 / 30, 0.15, true)
       }
-    }
+    },
+
+    sources: [
+      {
+        id: 'source-normal-sample',
+        name: 'telemetria_muestra_normal.csv',
+        scope: 'Multi-planta',
+        format: 'CSV',
+        period: 'Septiembre 2024',
+        status: 'validated',
+        href: new URL('../data/telemetria_muestra_normal.csv', import.meta.url).href,
+        origin: 'Repositorio local del dashboard'
+      },
+      {
+        id: 'source-rc-overuse',
+        name: 'telemetria_sobreconsumo_rc.csv',
+        scope: 'RC Energy & Gas',
+        format: 'CSV',
+        period: 'Septiembre 2024',
+        status: 'validated',
+        href: new URL('../data/telemetria_sobreconsumo_rc.csv', import.meta.url).href,
+        origin: 'Repositorio local del dashboard'
+      }
+    ]
+  };
+
+  const CUSTOM_PLANTS_STORAGE_KEY = 'clarios.customPlants.v1';
+  const BASE_GLOBAL_SNAPSHOT = {
+    totalEnergyKwh: 2808000,
+    energyCostUsd: 536960,
+    budgetEnergyKwh: 2799600,
+    plantEnergyKwh: 2808000,
+    plantCostUsd: 335940,
+    plantBudgetKwh: 2780000
   };
 
   /** Helper to generate 30 days of telemetry data with a configurable spike */
@@ -153,12 +220,16 @@
 
   // --- INITIALIZATION ---
   document.addEventListener('DOMContentLoaded', () => {
+    hydrateCustomPlants();
+    ensureDynamicPlantUI();
     initNavigation();
+    initPeriodContext();
     initTachometer();
-    initCharts();
     initFileUpload();
     initModals();
+    initAddPlantModal();
     renderAllViews();
+    if (window.location.hash === '#sources') switchView('sources');
     startLiveHeartbeat();
   });
 
@@ -166,6 +237,7 @@
   function initNavigation() {
     const tabLanding = document.getElementById('tab-landing');
     const tabDetail = document.getElementById('tab-detail');
+    const tabSources = document.getElementById('tab-sources');
     const btnBack = document.getElementById('btn-back-to-landing');
 
     if (tabLanding) {
@@ -174,31 +246,39 @@
     if (tabDetail) {
       tabDetail.addEventListener('click', () => switchView('detail'));
     }
+    if (tabSources) {
+      tabSources.addEventListener('click', () => switchView('sources'));
+    }
     if (btnBack) {
       btnBack.addEventListener('click', () => switchView('landing'));
     }
 
-    // Attach click listeners to battery cards on Landing page
-    document.querySelectorAll('.car-battery-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const plantId = card.getAttribute('data-plant-id');
-        if (plantId && DashboardStore.plants[plantId]) {
-          DashboardStore.currentPlantId = plantId;
-          switchView('detail');
+    const activatePlantFromCard = (target) => {
+      const card = target.closest('[data-plant-id]');
+      if (!card) return;
+      const plantId = card.getAttribute('data-plant-id');
+      if (plantId && DashboardStore.plants[plantId]) {
+        DashboardStore.currentPlantId = plantId;
+        switchView('detail');
+      }
+    };
+
+    ['.battery-cards-grid', '.sidebar-battery-list'].forEach(selector => {
+      const container = document.querySelector(selector);
+      if (!container) return;
+      container.addEventListener('click', event => activatePlantFromCard(event.target));
+      container.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          activatePlantFromCard(event.target);
         }
       });
     });
 
-    // Attach click listeners to sidebar cards
-    document.querySelectorAll('.sidebar-battery-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const plantId = card.getAttribute('data-plant-id');
-        if (plantId && DashboardStore.plants[plantId]) {
-          DashboardStore.currentPlantId = plantId;
-          updatePlantDetailView();
-        }
-      });
-    });
+    const btnOpenSources = document.getElementById('btn-open-sources');
+    if (btnOpenSources) btnOpenSources.addEventListener('click', () => switchView('sources'));
+
+    initMobileDrawer();
 
     // Quick report download button simulation
     const btnQuickReport = document.getElementById('btn-quick-report');
@@ -213,42 +293,444 @@
     }
   }
 
+  function initMobileDrawer() {
+    const backdrop = document.getElementById('mobile-drawer-backdrop');
+    const openButton = document.getElementById('btn-mobile-menu-toggle');
+    const closeButton = document.getElementById('btn-close-drawer');
+    if (!backdrop || !openButton || !closeButton) return;
+
+    const closeDrawer = () => {
+      backdrop.classList.remove('open');
+      document.body.classList.remove('drawer-open');
+    };
+    const openDrawer = () => {
+      backdrop.classList.add('open');
+      document.body.classList.add('drawer-open');
+    };
+
+    openButton.addEventListener('click', openDrawer);
+    closeButton.addEventListener('click', closeDrawer);
+    backdrop.addEventListener('click', event => {
+      if (event.target === backdrop) closeDrawer();
+    });
+
+    const drawerList = backdrop.querySelector('.drawer-nav-list');
+    if (drawerList) {
+      drawerList.addEventListener('click', event => {
+        const button = event.target.closest('.drawer-nav-btn');
+        if (!button) return;
+        const target = button.getAttribute('data-nav-target');
+        if (target === 'plant') {
+          const plantId = button.getAttribute('data-plant-id');
+          if (plantId && DashboardStore.plants[plantId]) DashboardStore.currentPlantId = plantId;
+          switchView('detail');
+        } else if (target === 'sources') {
+          switchView('sources');
+        } else {
+          switchView('landing');
+        }
+        closeDrawer();
+      });
+    }
+
+    const drawerAddPlant = document.getElementById('drawer-btn-add-plant');
+    if (drawerAddPlant) drawerAddPlant.addEventListener('click', () => {
+      closeDrawer();
+      openAddPlantModal();
+    });
+    const drawerSetpoint = document.getElementById('drawer-btn-setpoint');
+    if (drawerSetpoint) drawerSetpoint.addEventListener('click', () => {
+      closeDrawer();
+      document.getElementById('btn-open-setpoint-modal')?.click();
+    });
+    const drawerReport = document.getElementById('drawer-btn-report');
+    if (drawerReport) drawerReport.addEventListener('click', () => {
+      closeDrawer();
+      exportSCADAReport();
+    });
+    const drawerCsv = document.getElementById('drawer-btn-csv');
+    if (drawerCsv) drawerCsv.addEventListener('click', () => {
+      closeDrawer();
+      exportPlantCSV();
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && backdrop.classList.contains('open')) closeDrawer();
+    });
+  }
+
+  function updateDrawerActiveState() {
+    document.querySelectorAll('.drawer-nav-btn').forEach(button => {
+      const target = button.getAttribute('data-nav-target');
+      const plantId = button.getAttribute('data-plant-id');
+      const isActive = target === 'plant'
+        ? DashboardStore.currentView === 'detail' && plantId === DashboardStore.currentPlantId
+        : target === DashboardStore.currentView;
+      button.classList.toggle('active', isActive);
+      button.classList.toggle('danger', target === 'plant' && Boolean(DashboardStore.plants[plantId]?.isCritical));
+      const dot = button.querySelector('.tab-dot');
+      if (dot && target === 'plant') {
+        dot.style.background = DashboardStore.plants[plantId]?.isCritical ? 'var(--fire-red)' : 'var(--neon-green)';
+      }
+    });
+  }
+
+  function initPeriodContext() {
+    const monthSelects = [
+      document.getElementById('select-filter-month'),
+      document.getElementById('drawer-select-month')
+    ].filter(Boolean);
+    const yearSelects = [
+      document.getElementById('select-filter-year'),
+      document.getElementById('drawer-select-year')
+    ].filter(Boolean);
+
+    const synchronize = (source, peers) => {
+      peers.forEach(peer => {
+        if (peer !== source) peer.value = source.value;
+      });
+      updateComparisonPeriodLabel();
+    };
+
+    monthSelects.forEach(select => {
+      select.addEventListener('change', () => synchronize(select, monthSelects));
+    });
+    yearSelects.forEach(select => {
+      select.addEventListener('change', () => synchronize(select, yearSelects));
+    });
+
+    updateComparisonPeriodLabel();
+  }
+
   function switchView(viewName) {
     DashboardStore.currentView = viewName;
     const landingView = document.getElementById('view-landing');
     const detailView = document.getElementById('view-detail');
+    const sourcesView = document.getElementById('view-sources');
     const tabLanding = document.getElementById('tab-landing');
     const tabDetail = document.getElementById('tab-detail');
+    const tabSources = document.getElementById('tab-sources');
 
-    if (viewName === 'landing') {
-      landingView.classList.add('active-view');
-      detailView.classList.remove('active-view');
-      tabLanding.classList.add('active');
-      tabDetail.classList.remove('active');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      landingView.classList.remove('active-view');
-      detailView.classList.add('active-view');
-      tabLanding.classList.remove('active');
-      tabDetail.classList.add('active');
+    [landingView, detailView, sourcesView].forEach(view => {
+      if (view) view.classList.remove('active-view');
+    });
+    [tabLanding, tabDetail, tabSources].forEach(tab => {
+      if (tab) tab.classList.remove('active');
+    });
+
+    if (viewName === 'detail') {
+      if (detailView) detailView.classList.add('active-view');
+      if (tabDetail) tabDetail.classList.add('active');
       updatePlantDetailView();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (viewName === 'sources') {
+      if (sourcesView) sourcesView.classList.add('active-view');
+      if (tabSources) tabSources.classList.add('active');
+      renderSourcesView();
+    } else {
+      if (landingView) landingView.classList.add('active-view');
+      if (tabLanding) tabLanding.classList.add('active');
     }
+    updateDrawerActiveState();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // --- RENDER VIEWS ---
   function renderAllViews() {
+    ensureDynamicPlantUI();
+    recalculateGlobalMetrics();
     renderLandingMetrics();
     renderLandingBatteryCards();
+    renderSidebarCards();
+    renderExecutiveSummary();
+    renderPlantCounts();
+    renderSourcesView();
     updatePlantDetailView();
+  }
+
+  function hydrateCustomPlants() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(CUSTOM_PLANTS_STORAGE_KEY) || '[]');
+      if (!Array.isArray(stored)) return;
+
+      stored.forEach(plant => {
+        if (!plant || !plant.isCustom || typeof plant.id !== 'string' || !plant.name) return;
+        if (!Array.isArray(plant.dailyData) || plant.dailyData.length !== 30) {
+          plant.dailyData = generateDailyCurve(Number(plant.kwh) / 30, 0.08, Boolean(plant.isCritical));
+        }
+        DashboardStore.plants[plant.id] = plant;
+        registerPlantSource(plant);
+      });
+    } catch (error) {
+      console.warn('No fue posible restaurar las plantas personalizadas.', error);
+    }
+  }
+
+  function persistCustomPlants() {
+    try {
+      const customPlants = Object.values(DashboardStore.plants).filter(plant => plant.isCustom);
+      localStorage.setItem(CUSTOM_PLANTS_STORAGE_KEY, JSON.stringify(customPlants));
+    } catch (error) {
+      showToast('La planta fue creada, pero el navegador no permitió guardarla localmente.', 'danger');
+    }
+  }
+
+  function ensureDynamicPlantUI() {
+    const landingGrid = document.querySelector('.battery-cards-grid');
+    const landingTemplate = landingGrid && landingGrid.querySelector('.car-battery-card');
+    const sidebarList = document.querySelector('.sidebar-battery-list');
+    const sidebarTemplate = sidebarList && sidebarList.querySelector('.sidebar-battery-card');
+    const drawerList = document.querySelector('.drawer-nav-list');
+
+    Object.values(DashboardStore.plants).forEach(plant => {
+      if (landingGrid && landingTemplate && !landingGrid.querySelector(`[data-plant-id="${plant.id}"]`)) {
+        const card = landingTemplate.cloneNode(true);
+        card.setAttribute('data-plant-id', plant.id);
+        card.setAttribute('aria-label', 'Abrir detalles de ' + plant.name);
+        card.classList.remove('critical', 'trend-worse', 'active-plant');
+        landingGrid.appendChild(card);
+      }
+
+      if (sidebarList && sidebarTemplate && !sidebarList.querySelector(`[data-plant-id="${plant.id}"]`)) {
+        const card = sidebarTemplate.cloneNode(true);
+        card.setAttribute('data-plant-id', plant.id);
+        card.setAttribute('aria-label', 'Cambiar a ' + plant.name);
+        card.classList.remove('active', 'danger');
+        sidebarList.appendChild(card);
+      }
+
+      if (drawerList && !drawerList.querySelector(`[data-plant-id="${plant.id}"]`)) {
+        const button = document.createElement('button');
+        button.className = 'drawer-nav-btn';
+        button.type = 'button';
+        button.setAttribute('data-nav-target', 'plant');
+        button.setAttribute('data-plant-id', plant.id);
+
+        const dot = document.createElement('span');
+        dot.className = 'tab-dot';
+        const label = document.createElement('span');
+        label.textContent = plant.number + '. ' + plant.name;
+        button.append(dot, label);
+        drawerList.appendChild(button);
+      }
+    });
+  }
+
+  function recalculateGlobalMetrics() {
+    const plants = Object.values(DashboardStore.plants);
+    const plantEnergy = plants.reduce((sum, plant) => sum + Number(plant.kwh || 0), 0);
+    const plantBudget = plants.reduce((sum, plant) => sum + Number(plant.budgetKwh || 0), 0);
+    const plantCost = plants.reduce((sum, plant) => sum + Number(plant.costUsd || 0), 0);
+    DashboardStore.global.totalEnergyKwh = Math.round(BASE_GLOBAL_SNAPSHOT.totalEnergyKwh + plantEnergy - BASE_GLOBAL_SNAPSHOT.plantEnergyKwh);
+    DashboardStore.global.budgetEnergyKwh = Math.round(BASE_GLOBAL_SNAPSHOT.budgetEnergyKwh + plantBudget - BASE_GLOBAL_SNAPSHOT.plantBudgetKwh);
+    DashboardStore.global.energyCostUsd = Math.round(BASE_GLOBAL_SNAPSHOT.energyCostUsd + plantCost - BASE_GLOBAL_SNAPSHOT.plantCostUsd);
+    DashboardStore.global.budgetDeviationPct = DashboardStore.global.budgetEnergyKwh > 0
+      ? ((DashboardStore.global.totalEnergyKwh - DashboardStore.global.budgetEnergyKwh) / DashboardStore.global.budgetEnergyKwh) * 100
+      : 0;
+    DashboardStore.global.alertCount = plants.reduce((sum, plant) => sum + Number(plant.alertCount || 0), 0);
+  }
+
+  function renderPlantCounts() {
+    const plants = Object.values(DashboardStore.plants);
+    const normalCount = plants.filter(plant => !plant.isCritical).length;
+    const criticalCount = plants.length - normalCount;
+    setElementText('legend-normal-count', normalCount + (normalCount === 1 ? ' Planta en Rango' : ' Plantas en Rango'));
+    setElementText('legend-critical-count', criticalCount + (criticalCount === 1 ? ' Desviación Crítica' : ' Desviaciones Críticas'));
+    setElementText('blueprint-module-count', plants.length + ' MÓDULOS DE PROCESO ACTIVO (CLARIOS PROTOCOL V4.9)');
+    setElementText('sidebar-plant-count', '1 Activo / ' + plants.length + ' Total');
+  }
+
+  function registerPlantSource(plant) {
+    const safeSourceUrl = sanitizeExternalUrl(plant.sourceUrl);
+    if (!safeSourceUrl) return;
+    const sourceId = 'plant-source-' + plant.id;
+    if (DashboardStore.sources.some(source => source.id === sourceId)) return;
+    DashboardStore.sources.push({
+      id: sourceId,
+      name: 'Fuente de ' + plant.name,
+      scope: plant.name,
+      format: getSourceFormat(safeSourceUrl),
+      period: 'Vínculo registrado',
+      status: 'registered',
+      href: safeSourceUrl,
+      origin: 'Vínculo suministrado al crear la planta',
+      external: true
+    });
+  }
+
+  function renderSourcesView() {
+    const tableBody = document.getElementById('sources-table-body');
+    if (!tableBody) return;
+    tableBody.replaceChildren();
+
+    DashboardStore.sources.forEach(source => {
+      const row = document.createElement('tr');
+
+      const sourceCell = document.createElement('td');
+      const sourceName = document.createElement('strong');
+      sourceName.className = 'source-file-name';
+      sourceName.textContent = source.name;
+      const sourceOrigin = document.createElement('small');
+      sourceOrigin.textContent = source.origin || 'Origen registrado';
+      sourceCell.append(sourceName, sourceOrigin);
+
+      const scopeCell = document.createElement('td');
+      scopeCell.textContent = source.scope;
+      const formatCell = document.createElement('td');
+      const formatBadge = document.createElement('span');
+      formatBadge.className = 'source-format-badge';
+      formatBadge.textContent = source.format;
+      formatCell.appendChild(formatBadge);
+      const periodCell = document.createElement('td');
+      periodCell.textContent = source.period;
+
+      const statusCell = document.createElement('td');
+      const statusBadge = document.createElement('span');
+      statusBadge.className = 'source-status-badge ' + source.status;
+      statusBadge.textContent = source.status === 'validated' ? '● Validada' : '● Registrada';
+      statusCell.appendChild(statusBadge);
+
+      const actionsCell = document.createElement('td');
+      const actions = document.createElement('div');
+      actions.className = 'source-actions';
+      const previewButton = document.createElement('button');
+      previewButton.className = 'source-action-btn';
+      previewButton.type = 'button';
+      previewButton.textContent = 'Vista previa';
+      previewButton.addEventListener('click', () => previewSource(source.id));
+      actions.appendChild(previewButton);
+
+      if (source.href) {
+        const openLink = document.createElement('a');
+        openLink.className = 'source-action-link';
+        openLink.href = source.href;
+        openLink.textContent = source.external ? 'Abrir vínculo ↗' : 'Descargar ↓';
+        if (source.external) {
+          openLink.target = '_blank';
+          openLink.rel = 'noopener noreferrer';
+        } else {
+          openLink.setAttribute('download', source.name);
+        }
+        actions.appendChild(openLink);
+      }
+      actionsCell.appendChild(actions);
+      row.append(sourceCell, scopeCell, formatCell, periodCell, statusCell, actionsCell);
+      tableBody.appendChild(row);
+    });
+
+    const validatedCount = DashboardStore.sources.filter(source => source.status === 'validated').length;
+    setElementText('source-count-total', String(DashboardStore.sources.length));
+    setElementText('source-count-validated', String(validatedCount));
+    const latestImport = [...DashboardStore.sources].reverse().find(source => source.importedAt);
+    setElementText('source-last-update', latestImport ? latestImport.importedAt : 'Datos base');
+  }
+
+  async function previewSource(sourceId) {
+    const source = DashboardStore.sources.find(item => item.id === sourceId);
+    if (!source) return;
+
+    const title = document.getElementById('source-preview-title');
+    const meta = document.getElementById('source-preview-meta');
+    const empty = document.getElementById('source-preview-empty');
+    const content = document.getElementById('source-preview-content');
+    if (!title || !meta || !empty || !content) return;
+
+    title.textContent = source.name;
+    meta.textContent = source.scope + ' • ' + source.format + ' • ' + source.period;
+    empty.hidden = true;
+    content.hidden = false;
+    content.textContent = 'Cargando vista previa…';
+
+    try {
+      let rawText = source.rawText;
+      if (!rawText && source.href && !source.external && !source.binary) {
+        const response = await fetch(source.href);
+        if (!response.ok) throw new Error('No se pudo leer la fuente.');
+        rawText = await response.text();
+      }
+
+      if (rawText) {
+        const lines = rawText.trim().split(/\r?\n/);
+        const visibleLines = lines.slice(0, 13);
+        content.textContent = visibleLines.join('\n') + (lines.length > visibleLines.length ? '\n… ' + (lines.length - visibleLines.length) + ' registros adicionales' : '');
+      } else if (source.external) {
+        content.textContent = 'Fuente externa registrada:\n' + source.href + '\n\nUse “Abrir vínculo” para consultar el Excel o repositorio original.';
+      } else {
+        content.textContent = 'La vista previa no está disponible para este formato binario. Use “Descargar” para abrir el archivo en Excel.';
+      }
+      document.getElementById('source-preview-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (error) {
+      content.textContent = 'No fue posible cargar la vista previa. El enlace de descarga permanece disponible.';
+    }
+  }
+
+  function registerUploadedSource(file, rawText, binary = false) {
+    const objectUrl = URL.createObjectURL(file);
+    const now = new Date();
+    const importedAt = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    const source = {
+      id: 'upload-' + Date.now(),
+      name: file.name,
+      scope: 'Carga manual multi-planta',
+      format: getSourceFormat(file.name),
+      period: 'Hoy, ' + importedAt,
+      status: binary ? 'registered' : 'validated',
+      href: objectUrl,
+      origin: 'Archivo cargado por el usuario • ' + formatFileSize(file.size),
+      rawText: rawText || '',
+      binary,
+      importedAt
+    };
+    DashboardStore.sources.push(source);
+    renderSourcesView();
+    return source;
+  }
+
+  function getSourceFormat(path) {
+    const cleanedPath = String(path || '').split('?')[0].toUpperCase();
+    if (cleanedPath.endsWith('.XLSX') || cleanedPath.endsWith('.XLS')) return 'EXCEL';
+    if (cleanedPath.endsWith('.DAT')) return 'DAT';
+    return 'CSV';
+  }
+
+  function sanitizeExternalUrl(value) {
+    if (!value) return '';
+    try {
+      const url = new URL(String(value));
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function formatFileSize(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
+    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
   function renderLandingMetrics() {
     const g = DashboardStore.global;
-    setElementText('landing-global-kwh', formatNumber(g.totalEnergyKwh) + ' kWh');
-    setElementText('landing-global-cost', '$' + formatNumber(g.energyCostUsd) + ' USD');
+    const history = g.historicalAverage;
+
+    setElementText('landing-global-kwh', formatNumber(g.totalEnergyKwh));
+    setElementText('landing-global-cost', '$' + formatNumber(g.energyCostUsd));
     setElementText('landing-global-deviation', (g.budgetDeviationPct > 0 ? '+' : '') + g.budgetDeviationPct.toFixed(1) + '%');
     setElementText('landing-global-alerts', g.alertCount + ' alertas');
+
+    const energyState = renderPercentComparison('landing-global-kwh-trend', g.totalEnergyKwh, history.totalEnergyKwh, true);
+    const costState = renderPercentComparison('landing-global-cost-trend', g.energyCostUsd, history.energyCostUsd, true);
+    const deviationState = renderPointComparison('landing-global-deviation-trend', g.budgetDeviationPct, history.budgetDeviationPct, true);
+    const alertState = renderCountComparison('landing-global-alerts-trend', g.alertCount, history.alertCount, true);
+
+    setElementText('landing-global-kwh-baseline', 'Promedio: ' + formatNumber(history.totalEnergyKwh) + ' kWh');
+    setElementText('landing-global-cost-baseline', 'Promedio: $' + formatNumber(history.energyCostUsd) + ' USD');
+    setElementText('landing-global-deviation-baseline', 'Promedio: ' + formatSigned(history.budgetDeviationPct, 1) + '% · Tolerancia ±2%');
+    setElementText('landing-global-alerts-baseline', g.alertCount > 0 ? 'Foco actual: RC Energy & Gas' : 'Sin focos activos');
+
+    setKpiCardState('landing-kpi-energy-card', energyState);
+    setKpiCardState('landing-kpi-cost-card', costState);
+    setKpiCardState('landing-kpi-deviation-card', deviationState);
+    setKpiCardState('landing-kpi-alerts-card', g.alertCount > 0 ? 'negative' : alertState);
   }
 
   function renderLandingBatteryCards() {
@@ -257,8 +739,23 @@
       const card = document.querySelector(`.car-battery-card[data-plant-id="${plantId}"]`);
       if (!card) return;
 
+      card.setAttribute('aria-label', 'Abrir detalles de ' + p.name);
+      const tagEl = card.querySelector('.plant-id-tag');
+      if (tagEl) tagEl.textContent = p.tag;
+      const nameEl = card.querySelector('.battery-plant-name');
+      if (nameEl) {
+        const icon = nameEl.querySelector('svg');
+        nameEl.replaceChildren(document.createTextNode(p.number + '. ' + p.name + ' '));
+        if (icon) nameEl.appendChild(icon);
+      }
+
       const kwhEl = card.querySelector('.battery-metric-kwh');
-      if (kwhEl) kwhEl.textContent = formatNumber(p.kwh) + ' kWh';
+      if (kwhEl) {
+        kwhEl.textContent = formatNumber(p.kwh) + ' kWh';
+        kwhEl.style.color = p.isCritical ? 'var(--fire-red)' : '';
+      }
+
+      card.classList.toggle('critical', p.isCritical);
 
       const ratioEl = card.querySelector('.submetric-ratio');
       if (ratioEl) ratioEl.textContent = p.ratioKwhUnit.toFixed(2) + ' kWh/u';
@@ -272,9 +769,134 @@
         devEl.className = 'submetric-val submetric-dev ' + (p.deviationPct > 0 ? 'red' : 'green');
       }
 
+      const plantTrend = card.querySelector('.plant-trend-chip');
+      if (plantTrend) {
+        const state = renderPercentComparisonElement(plantTrend, p.kwh, p.previous.kwh, true, ' vs corte anterior');
+        plantTrend.classList.add('plant-trend-chip');
+        card.classList.toggle('trend-worse', state === 'negative');
+      }
+
+      const alertTag = card.querySelector('.battery-alert-tag');
+      if (alertTag) {
+        alertTag.className = 'battery-alert-tag ' + (p.isCritical ? 'tag-danger' : 'tag-success');
+        alertTag.textContent = p.isCritical ? 'FOCO CRÍTICO' : 'OPERACIÓN ÓPTIMA';
+      }
+
+      const statusPill = card.querySelector('.battery-status-pill');
+      if (statusPill) {
+        statusPill.className = 'battery-status-pill ' + (p.isCritical ? 'red' : 'green');
+        statusPill.textContent = p.isCritical ? '▲ Alerta activa' : '● Planta nominal';
+      }
+
+      const actionButton = card.querySelector('.btn-card-action');
+      if (actionButton) {
+        actionButton.classList.toggle('btn-action-danger', p.isCritical);
+        actionButton.textContent = p.isCritical ? 'Inspeccionar →' : 'Ver detalle →';
+      }
+
+      const sparklineLabels = card.querySelectorAll('.sparkline-label span');
+      if (sparklineLabels.length >= 2) {
+        sparklineLabels[0].textContent = 'Perfil de carga · ' + p.tag;
+        sparklineLabels[1].textContent = p.isCritical ? 'Requiere atención' : 'Carga estable';
+        sparklineLabels[1].style.color = p.isCritical ? 'var(--fire-red)' : 'var(--neon-green)';
+      }
+
       // Draw SVG mini sparkline
       renderMiniSparkline(card.querySelector('.sparkline-svg'), p.sparklinePoints, p.isCritical ? '#FF3D57' : (plantId === 'fa' ? '#7C4DFF' : '#00E676'));
     });
+  }
+
+  function renderExecutiveSummary() {
+    const plants = Object.values(DashboardStore.plants);
+    const improvedCount = plants.filter(plant => plant.kwh < plant.previous.kwh).length;
+    const netDeltaKwh = plants.reduce((sum, plant) => sum + (plant.kwh - plant.previous.kwh), 0);
+    const focusPlant = plants.reduce((focus, plant) => {
+      const delta = plant.kwh - plant.previous.kwh;
+      return delta > focus.delta ? { plant, delta } : focus;
+    }, { plant: null, delta: 0 });
+
+    setElementText('decision-balance', improvedCount + ' de ' + plants.length + ' plantas mejoran');
+    setElementText(
+      'decision-balance-detail',
+      'Consumo neto: ' + formatNumber(Math.abs(netDeltaKwh)) + ' kWh ' + (netDeltaKwh <= 0 ? 'menos' : 'adicionales')
+    );
+
+    if (focusPlant.plant) {
+      const costImpact = focusPlant.plant.costUsd - focusPlant.plant.previous.costUsd;
+      setElementText('decision-focus', focusPlant.plant.name);
+      setElementText('decision-focus-detail', '+' + formatNumber(focusPlant.delta) + ' kWh vs corte anterior');
+      setElementText('decision-impact', '+$' + formatNumber(Math.max(0, costImpact)) + ' USD');
+      setElementText('decision-impact-detail', 'Costo incremental del foco crítico');
+    } else {
+      setElementText('decision-focus', 'Sin focos de deterioro');
+      setElementText('decision-focus-detail', 'Todas las plantas reducen consumo');
+      setElementText('decision-impact', '$0 USD');
+      setElementText('decision-impact-detail', 'Sin costo incremental detectado');
+    }
+  }
+
+  function renderSidebarCards() {
+    Object.values(DashboardStore.plants).forEach(plant => {
+      const card = document.querySelector(`.sidebar-battery-card[data-plant-id="${plant.id}"]`);
+      if (!card) return;
+
+      const isActive = plant.id === DashboardStore.currentPlantId;
+      card.classList.toggle('active', isActive);
+      card.classList.toggle('danger', plant.isCritical);
+
+      const cardTop = card.querySelector('.sidebar-card-top');
+      const existingActiveBadge = card.querySelector('.sidebar-active-badge');
+      if (existingActiveBadge) existingActiveBadge.remove();
+      if (isActive && cardTop) {
+        const activeBadge = document.createElement('span');
+        activeBadge.className = 'sidebar-active-badge';
+        activeBadge.textContent = 'ACTIVO';
+        cardTop.appendChild(activeBadge);
+      }
+
+
+      const nameEl = card.querySelector('.sidebar-plant-name');
+      if (nameEl) nameEl.textContent = plant.number + '. ' + plant.name;
+
+      const kwhValue = card.querySelector('.sidebar-kwh-value');
+      if (kwhValue) {
+        const unit = document.createElement('span');
+        unit.textContent = 'kWh';
+        kwhValue.replaceChildren(document.createTextNode(formatNumber(plant.kwh) + ' '), unit);
+        kwhValue.style.color = plant.isCritical ? 'var(--fire-red)' : '';
+      }
+
+      const metricValues = card.querySelectorAll('.sidebar-submetrics-row .val');
+      if (metricValues.length >= 3) {
+        metricValues[0].textContent = plant.ratioKwhUnit.toFixed(2);
+        metricValues[1].textContent = '$' + formatNumber(Math.round(plant.costUsd / 1000)) + 'k';
+        metricValues[2].textContent = formatSigned(plant.deviationPct, 1) + '%';
+        metricValues[2].style.color = plant.deviationPct > 0 ? 'var(--fire-red)' : 'var(--neon-green)';
+      }
+
+      const statusLine = card.querySelector('.sidebar-card-bottom > span:first-child');
+      if (statusLine) {
+        statusLine.className = 'sidebar-state ' + (plant.isCritical ? 'danger' : 'normal');
+        statusLine.textContent = plant.isCritical ? '▲ SOBRECONSUMO' : '● NOMINAL';
+      }
+      const sensorTag = card.querySelector('.sensor-count-tag');
+      if (sensorTag) sensorTag.textContent = plant.sensorsCount + ' Sensores';
+
+      let alertMessage = card.querySelector('.alert-message-sub');
+      if (plant.isCritical) {
+        if (!alertMessage) {
+          alertMessage = document.createElement('div');
+          alertMessage.className = 'alert-message-sub';
+          alertMessage.appendChild(document.createElement('span'));
+          card.appendChild(alertMessage);
+        }
+        const alertText = alertMessage.querySelector('span');
+        if (alertText) alertText.textContent = plant.alertSnippet;
+      } else if (alertMessage) {
+        alertMessage.remove();
+      }
+    });
+    updateDrawerActiveState();
   }
 
   function renderMiniSparkline(svgEl, points, strokeColor) {
@@ -330,6 +952,8 @@
     const currentPlant = DashboardStore.plants[DashboardStore.currentPlantId];
     if (!currentPlant) return;
 
+    renderSidebarCards();
+
     // 1. Update Sidebar Active state
     document.querySelectorAll('.sidebar-battery-card').forEach(card => {
       const pid = card.getAttribute('data-plant-id');
@@ -344,6 +968,15 @@
     setElementText('detail-current-plant-name', currentPlant.name);
     setElementText('detail-breadcrumb-plant', currentPlant.name);
     setElementText('detail-node-id', currentPlant.nodeUri);
+    const detailTab = document.getElementById('tab-detail');
+    if (detailTab) {
+      const dot = detailTab.querySelector('.tab-dot');
+      detailTab.replaceChildren();
+      if (dot) detailTab.appendChild(dot);
+      detailTab.appendChild(document.createTextNode(' Detalle · ' + currentPlant.name));
+      detailTab.classList.toggle('danger', currentPlant.isCritical);
+    }
+    updateComparisonPeriodLabel();
 
     // Status alert badge in header
     const statusPill = document.getElementById('detail-header-status-pill');
@@ -366,20 +999,23 @@
 
     // 3. High-level KPI Summary Cards (Detail)
     setElementText('detail-kpi-total-kwh', formatNumber(currentPlant.kwh));
-    setElementText('detail-kpi-kwh-sub', (currentPlant.deviationPct > 0 ? '+' : '') + currentPlant.deviationPct.toFixed(1) + '% vs ' + formatNumber(Math.round(currentPlant.budgetKwh / 1000)) + 'k ppto');
+    setElementText('detail-kpi-kwh-sub', 'Meta: ' + formatNumber(currentPlant.budgetKwh) + ' kWh');
 
     setElementText('detail-kpi-cost', '$' + formatNumber(currentPlant.costUsd) + ' USD');
+    setElementText('detail-kpi-cost-context', 'Tarifa neta: $' + (currentPlant.costUsd / currentPlant.kwh).toFixed(3) + ' / kWh');
     setElementText('detail-kpi-unit-ratio', currentPlant.ratioKwhUnit.toFixed(2) + ' kWh/u');
-    setElementText('detail-kpi-unit-target', 'Neto: ' + currentPlant.ratioTarget.toFixed(2) + ' kWh/u');
+    setElementText('detail-kpi-unit-target', 'Meta: ' + currentPlant.ratioTarget.toFixed(2) + ' kWh/u');
+
+    const ratioDeviationPct = ((currentPlant.ratioKwhUnit - currentPlant.ratioTarget) / currentPlant.ratioTarget) * 100;
 
     const badgeRatio = document.getElementById('detail-kpi-badge-ratio');
     if (badgeRatio) {
-      if (currentPlant.deviationPct > 0) {
+      if (ratioDeviationPct > 0) {
         badgeRatio.className = 'detail-kpi-badge badge-danger';
-        badgeRatio.textContent = '+' + currentPlant.deviationPct.toFixed(1) + '% OFF-BUDGET';
+        badgeRatio.textContent = '+' + ratioDeviationPct.toFixed(1) + '% SOBRE META';
       } else {
         badgeRatio.className = 'detail-kpi-badge badge-success';
-        badgeRatio.textContent = currentPlant.deviationPct.toFixed(1) + '% ON-BUDGET';
+        badgeRatio.textContent = ratioDeviationPct.toFixed(1) + '% EN META';
       }
     }
 
@@ -388,10 +1024,10 @@
       devEl.textContent = (currentPlant.deviationPct > 0 ? '+' : '') + currentPlant.deviationPct.toFixed(1) + '%';
       devEl.className = 'detail-kpi-val ' + (currentPlant.deviationPct > 0 ? 'red' : 'green');
     }
-    setElementText('detail-kpi-dev-sub', currentPlant.deviationPct > 0 ? 'Gasto Excedente' : 'Dentro de Presupuesto');
+    setElementText('detail-kpi-dev-sub', currentPlant.deviationPct > 0 ? 'Gasto excedente' : 'Dentro de presupuesto');
 
     setElementText('detail-kpi-prod-qty', formatNumber(currentPlant.productionUnits));
-    setElementText('detail-kpi-prod-sub', currentPlant.productionType + ' (100% cuota)');
+    setElementText('detail-kpi-prod-sub', currentPlant.productionType);
 
     const scadaStatusEl = document.getElementById('detail-kpi-scada-status');
     if (scadaStatusEl) {
@@ -400,8 +1036,22 @@
     }
     setElementText('detail-kpi-scada-sensors', currentPlant.sensorsCount + ' Sensores IoT');
 
+    const kwhState = renderPercentComparison('detail-kpi-kwh-trend', currentPlant.kwh, currentPlant.previous.kwh, true);
+    const costState = renderPercentComparison('detail-kpi-cost-trend', currentPlant.costUsd, currentPlant.previous.costUsd, true);
+    const ratioState = renderPercentComparison('detail-kpi-ratio-trend', currentPlant.ratioKwhUnit, currentPlant.previous.ratioKwhUnit, true);
+    const deviationTrendState = renderPointComparison('detail-kpi-dev-trend', currentPlant.deviationPct, currentPlant.previous.deviationPct, true);
+    const productionState = renderPercentComparison('detail-kpi-prod-trend', currentPlant.productionUnits, currentPlant.previous.productionUnits, false);
+    const scadaState = renderCountComparison('detail-kpi-scada-trend', currentPlant.alertCount, currentPlant.previous.alertCount, true);
+
+    setKpiCardState('detail-card-kwh', kwhState);
+    setKpiCardState('detail-card-cost', costState);
+    setKpiCardState('detail-card-ratio', ratioState);
+    setKpiCardState('detail-card-deviation', deviationTrendState);
+    setKpiCardState('detail-card-production', productionState);
+    setKpiCardState('detail-card-scada', currentPlant.alertCount > 0 ? 'negative' : scadaState);
+
     // 4. Update Automotive Tachometer
-    updateTachometer(currentPlant.kwh, currentPlant.budgetKwh, currentPlant.maxCapacityKwh);
+    updateTachometer(currentPlant);
 
     // 5. Update Charts
     renderLineChart(currentPlant.dailyData, currentPlant.budgetKwh / 30);
@@ -413,7 +1063,6 @@
   }
 
   // --- AUTOMOTIVE TACHOMETER (VELOCÍMETRO DE DEMANDA ELÉCTRICA) ---
-  let tachometerCanvas, tachometerCtx;
   let currentAnimatedKwh = 0;
   let targetKwh = 864000;
   let currentBudgetKwh = 780000;
@@ -421,26 +1070,35 @@
   let animFrameId = null;
 
   function initTachometer() {
-    tachometerCanvas = document.getElementById('tachometer-canvas');
-    if (!tachometerCanvas) return;
-    tachometerCtx = tachometerCanvas.getContext('2d');
-
-    // Handle high DPI displays
-    const dpr = window.devicePixelRatio || 1;
-    const rect = tachometerCanvas.getBoundingClientRect();
-    tachometerCanvas.width = rect.width * dpr;
-    tachometerCanvas.height = rect.height * dpr;
-    tachometerCtx.scale(dpr, dpr);
+    currentAnimatedKwh = 0;
   }
 
-  function updateTachometer(newKwh, budgetKwh, maxKwh) {
+  function updateTachometer(plant) {
+    if (!plant) return;
+
+    const newKwh = plant.kwh;
+    const budgetKwh = plant.budgetKwh;
+    const maxKwh = plant.maxCapacityKwh;
     targetKwh = newKwh;
     currentBudgetKwh = budgetKwh;
     currentMaxCapacity = maxKwh;
 
-    // Update textual panel
+    setElementText('tachometer-cluster-sub', 'SCADA · ' + plant.name);
     setElementText('cal-promedio-val', formatNumber(budgetKwh) + ' kWh');
     setElementText('cal-capacidad-val', formatNumber(maxKwh) + ' kWh');
+    setElementText('cal-previous-val', formatNumber(plant.previous.kwh) + ' kWh');
+
+    const previousChange = ((newKwh - plant.previous.kwh) / plant.previous.kwh) * 100;
+    const previousSubEl = document.getElementById('cal-previous-sub');
+    if (previousSubEl) {
+      if (Math.abs(previousChange) < 0.05) {
+        previousSubEl.textContent = 'Consumo actual estable';
+        previousSubEl.className = 'cal-sub';
+      } else {
+        previousSubEl.textContent = 'Consumo actual: ' + Math.abs(previousChange).toFixed(1) + '% ' + (previousChange > 0 ? 'por encima' : 'por debajo');
+        previousSubEl.className = 'cal-sub ' + (previousChange > 0 ? 'red' : 'green');
+      }
+    }
 
     const exceso = newKwh - budgetKwh;
     const posValEl = document.getElementById('cal-posicion-val');
@@ -456,160 +1114,158 @@
       }
     }
 
+    const capacityRemaining = maxKwh - newKwh;
+    setElementText(
+      'cal-capacidad-sub',
+      capacityRemaining >= 0
+        ? 'Margen contratado: ' + formatNumber(capacityRemaining) + ' kWh'
+        : 'Capacidad excedida: ' + formatNumber(Math.abs(capacityRemaining)) + ' kWh'
+    );
+
     const dialStatus = document.getElementById('cal-dial-status');
     if (dialStatus) {
-      dialStatus.textContent = exceso > 0 ? 'DEFLEXIÓN ANÓMALA DETECTADA' : 'OPERACIÓN BALANCEADA';
+      dialStatus.textContent = exceso > 0 ? 'SOBRECONSUMO' : 'OPERACIÓN BALANCEADA';
       dialStatus.className = exceso > 0 ? 'active' : '';
     }
 
-    // Start needle animation loop
+    updateGaugeScale(budgetKwh, maxKwh);
+
     if (animFrameId) cancelAnimationFrame(animFrameId);
+    if (currentAnimatedKwh === 0) {
+      currentAnimatedKwh = targetKwh;
+      drawTachometerFrame(currentAnimatedKwh, currentBudgetKwh, currentMaxCapacity);
+      return;
+    }
     animateTachometer();
+  }
+
+  function updateGaugeScale(budgetKwh, maxKwh) {
+    updateGaugeTick(0, 'gauge-tick-line-0', 'gauge-tick-0', '0');
+    updateGaugeTick(0.2, 'gauge-tick-line-20', 'gauge-tick-20', formatGaugeValue(maxKwh * 0.2));
+    updateGaugeTick(0.4, 'gauge-tick-line-40', 'gauge-tick-40', formatGaugeValue(maxKwh * 0.4));
+    updateGaugeTick(0.6, 'gauge-tick-line-60', 'gauge-tick-60', formatGaugeValue(maxKwh * 0.6));
+    updateGaugeTick(1, 'gauge-tick-line-max', 'gauge-tick-max', formatGaugeValue(maxKwh));
+
+    const budgetPct = Math.min(Math.max(budgetKwh / maxKwh, 0), 1);
+    const point = getGaugePoint(budgetPct, 160);
+    const innerPoint = getGaugePoint(budgetPct, 143);
+    const budgetTick = document.getElementById('stitch-gauge-budget-tick');
+    const budgetDot = document.getElementById('stitch-gauge-budget-dot');
+    const budgetLabel = document.getElementById('stitch-gauge-budget-label');
+    const alertSector = document.getElementById('stitch-gauge-alert-sector');
+
+    if (budgetTick) {
+      budgetTick.setAttribute('x1', point.x.toFixed(1));
+      budgetTick.setAttribute('y1', point.y.toFixed(1));
+      budgetTick.setAttribute('x2', innerPoint.x.toFixed(1));
+      budgetTick.setAttribute('y2', innerPoint.y.toFixed(1));
+    }
+    if (budgetDot) {
+      budgetDot.setAttribute('cx', point.x.toFixed(1));
+      budgetDot.setAttribute('cy', point.y.toFixed(1));
+    }
+    if (budgetLabel) {
+      const onRight = budgetPct >= 0.5;
+      budgetLabel.setAttribute('x', (point.x + (onRight ? -8 : 8)).toFixed(1));
+      budgetLabel.setAttribute('y', Math.max(24, point.y - 14).toFixed(1));
+      budgetLabel.setAttribute('text-anchor', onRight ? 'end' : 'start');
+      budgetLabel.textContent = 'META ' + formatGaugeValue(budgetKwh);
+    }
+    if (alertSector) {
+      alertSector.setAttribute('d', `M ${point.x.toFixed(1)},${point.y.toFixed(1)} A 160,160 0 0,1 360,200`);
+    }
+  }
+
+  function updateGaugeTick(pct, lineId, labelId, labelText) {
+    const line = document.getElementById(lineId);
+    const label = document.getElementById(labelId);
+    const outerPoint = getGaugePoint(pct, 160);
+    const innerPoint = getGaugePoint(pct, 144);
+    const labelPoint = getGaugePoint(pct, pct === 0 || pct === 1 ? 174 : 176);
+
+    if (line) {
+      line.setAttribute('x1', outerPoint.x.toFixed(1));
+      line.setAttribute('y1', outerPoint.y.toFixed(1));
+      line.setAttribute('x2', innerPoint.x.toFixed(1));
+      line.setAttribute('y2', innerPoint.y.toFixed(1));
+    }
+    if (label) {
+      label.setAttribute('x', labelPoint.x.toFixed(1));
+      label.setAttribute('y', (labelPoint.y + (pct === 0 || pct === 1 ? 18 : 4)).toFixed(1));
+      label.textContent = labelText;
+    }
   }
 
   function animateTachometer() {
     const diff = targetKwh - currentAnimatedKwh;
-    if (Math.abs(diff) < 500) {
+    if (Math.abs(diff) < 250) {
       currentAnimatedKwh = targetKwh;
+      drawTachometerFrame(currentAnimatedKwh, currentBudgetKwh, currentMaxCapacity);
+      animFrameId = null;
     } else {
       currentAnimatedKwh += diff * 0.12;
+      drawTachometerFrame(currentAnimatedKwh, currentBudgetKwh, currentMaxCapacity);
       animFrameId = requestAnimationFrame(animateTachometer);
     }
-
-    drawTachometerFrame(currentAnimatedKwh, currentBudgetKwh, currentMaxCapacity);
   }
 
   function drawTachometerFrame(kwh, budget, maxKwh) {
-    if (!tachometerCtx || !tachometerCanvas) return;
-    const ctx = tachometerCtx;
-    const dpr = window.devicePixelRatio || 1;
-    const width = tachometerCanvas.width / dpr;
-    const height = tachometerCanvas.height / dpr;
+    const currentPct = Math.min(Math.max(kwh / maxKwh, 0), 1);
+    const isOverBudget = kwh > budget;
+    const needleColor = isOverBudget ? '#FF3D57' : '#00E676';
+    const needleLines = document.querySelectorAll('.stitch-needle-line');
 
-    ctx.clearRect(0, 0, width, height);
+    needleLines.forEach(line => {
+      const length = Number(line.getAttribute('data-needle-length')) || 156;
+      const point = getGaugePoint(currentPct, length);
+      line.setAttribute('x2', point.x.toFixed(1));
+      line.setAttribute('y2', point.y.toFixed(1));
+    });
 
-    const centerX = width / 2;
-    const centerY = height - 12;
-    const radius = 95;
-
-    // Angle span: from -140 deg to -40 deg (or 130 to 410 in standard radian coordinates)
-    const startAngle = Math.PI * 0.85; // ~153 deg
-    const endAngle = Math.PI * 2.15;   // ~387 deg
-    const totalAngle = endAngle - startAngle;
-
-    // Ratio of budget threshold and danger zone
-    const budgetPct = budget / maxKwh; // e.g. 780k / 950k = 0.82
-    const currentPct = Math.min(Math.max(kwh / maxKwh, 0), 1.05);
-
-    // 1. Background Track Arc
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // 2. Green Safe Arc (0% to ~70%)
-    const safeAngle = startAngle + totalAngle * 0.70;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, startAngle, safeAngle);
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#00E676';
-    ctx.lineCap = 'butt';
-    ctx.stroke();
-
-    // 3. Amber Caution Arc (70% to budget threshold)
-    const warnAngle = startAngle + totalAngle * budgetPct;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, safeAngle, warnAngle);
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#FFAB00';
-    ctx.lineCap = 'butt';
-    ctx.stroke();
-
-    // 4. Fire Red Critical Over-budget Arc (budget to max)
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, warnAngle, endAngle);
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#FF3D57';
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // 5. Radial Tick Marks
-    const numTicks = 10;
-    for (let i = 0; i <= numTicks; i++) {
-      const tickAngle = startAngle + (totalAngle * (i / numTicks));
-      const tickLen = (i % 2 === 0) ? 8 : 4;
-      const x1 = centerX + Math.cos(tickAngle) * (radius - 12);
-      const y1 = centerY + Math.sin(tickAngle) * (radius - 12);
-      const x2 = centerX + Math.cos(tickAngle) * (radius - 12 - tickLen);
-      const y2 = centerY + Math.sin(tickAngle) * (radius - 12 - tickLen);
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.lineWidth = (i % 2 === 0) ? 2 : 1;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.stroke();
+    const glowLine = document.getElementById('stitch-needle-glow-line');
+    if (glowLine) {
+      glowLine.setAttribute('stroke', needleColor);
+      glowLine.setAttribute('filter', isOverBudget ? 'url(#redNeonGlow)' : 'url(#greenNeonGlow)');
     }
+    const hubCenter = document.getElementById('stitch-needle-hub-center');
+    if (hubCenter) hubCenter.setAttribute('fill', needleColor);
 
-    // 6. Animated Needle
-    const needleAngle = startAngle + (totalAngle * Math.min(currentPct, 1.0));
-    const needleLength = radius - 10;
+    const alertSector = document.getElementById('stitch-gauge-alert-sector');
+    if (alertSector) alertSector.setAttribute('opacity', isOverBudget ? '0.95' : '0.28');
 
-    ctx.save();
-    ctx.shadowColor = kwh > budget ? 'rgba(255, 61, 87, 0.6)' : 'rgba(0, 230, 118, 0.5)';
-    ctx.shadowBlur = 10;
-
-    // Needle shape
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    const needleTipX = centerX + Math.cos(needleAngle) * needleLength;
-    const needleTipY = centerY + Math.sin(needleAngle) * needleLength;
-    ctx.lineTo(needleTipX, needleTipY);
-    ctx.lineWidth = 3.5;
-    ctx.strokeStyle = kwh > budget ? '#FF3D57' : '#00E676';
-    ctx.lineCap = 'round';
-    ctx.stroke();
-    ctx.restore();
-
-    // Needle Pivot Hub
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
-    ctx.fillStyle = '#222732';
-    ctx.fill();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = '#7C4DFF';
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-
-    // 7. Update Digital readout below gauge
     const digitalReadout = document.getElementById('gauge-digital-value');
     const gaugeAlertPill = document.getElementById('gauge-alert-pill');
 
     if (digitalReadout) {
       digitalReadout.textContent = formatNumber(Math.round(kwh));
-      if (kwh > budget) {
-        digitalReadout.className = 'gauge-digital-kwh over-budget';
-      } else {
-        digitalReadout.className = 'gauge-digital-kwh under-budget';
-      }
+      digitalReadout.className = 'gauge-digital-kwh ' + (isOverBudget ? 'over-budget' : 'under-budget');
     }
 
     if (gaugeAlertPill) {
       const pctOver = (((kwh - budget) / budget) * 100).toFixed(1);
-      if (kwh > budget) {
+      if (isOverBudget) {
         gaugeAlertPill.className = 'gauge-alert-pill danger';
-        gaugeAlertPill.textContent = `Límite superado (+${pctOver}% sobre ppto de ${formatNumber(budget)} kWh)`;
+        gaugeAlertPill.textContent = `Límite superado: +${pctOver}% sobre la meta de ${formatNumber(budget)} kWh`;
       } else {
         gaugeAlertPill.className = 'gauge-alert-pill normal';
-        gaugeAlertPill.textContent = `Consumo seguro (${Math.abs(pctOver)}% bajo ppto)`;
+        gaugeAlertPill.textContent = `Consumo en rango: ${Math.abs(pctOver)}% bajo la meta`;
       }
     }
+  }
+
+  function getGaugePoint(pct, radius) {
+    const angle = Math.PI - (Math.PI * pct);
+    return {
+      x: 200 + Math.cos(angle) * radius,
+      y: 200 - Math.sin(angle) * radius
+    };
+  }
+
+  function formatGaugeValue(value) {
+    if (value >= 1000000) {
+      return (value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1) + 'M';
+    }
+    return Math.round(value / 1000) + 'k';
   }
 
   // --- INTERACTIVE CHARTS ---
@@ -822,7 +1478,8 @@
     if (plant.isCritical && !DashboardStore.faultAcknowledged) {
       card.classList.remove('resolved');
       if (badge) badge.textContent = 'CRITICAL TRIP ADVISORY';
-      if (desc) desc.textContent = `Energy intensity exceeds budget by ${plant.deviationPct.toFixed(1)}% (Actual: ${plant.ratioKwhUnit.toFixed(2)} kWh/u vs Target: ${plant.ratioTarget.toFixed(2)} kWh/u). Gas intensity spike detected in Smelting Furnaces battery lead-melting line. Telemetry source: Modbus TCP Gateway #${plant.nodeUri}.`;
+      const ratioDeviation = ((plant.ratioKwhUnit - plant.ratioTarget) / plant.ratioTarget) * 100;
+      if (desc) desc.textContent = `La demanda total supera el presupuesto en ${plant.deviationPct.toFixed(1)}%; la intensidad unitaria está ${ratioDeviation.toFixed(1)}% sobre la meta (${plant.ratioKwhUnit.toFixed(2)} vs ${plant.ratioTarget.toFixed(2)} kWh/u). Telemetría: ${plant.nodeUri}.`;
       if (btnAck) {
         btnAck.textContent = 'Acknowledge Fault';
         btnAck.classList.remove('acked');
@@ -905,11 +1562,18 @@
       return;
     }
 
+    if (fileName.endsWith('.xlsx')) {
+      registerUploadedSource(file, '', true);
+      showToast('Excel registrado en Fuentes de Datos. Para sincronizar KPIs, exporta la hoja con la plantilla CSV.', 'success');
+      return;
+    }
+
     // Read and parse file content securely
     const reader = new FileReader();
     reader.onload = function (e) {
       try {
         const textContent = e.target.result;
+        registerUploadedSource(file, textContent, false);
         parseTelemetryCSV(textContent);
       } catch (err) {
         showToast('Error al parsear el archivo de telemetría.', 'danger');
@@ -933,6 +1597,7 @@
         const plantKey = row[0].trim().toLowerCase();
         const kwh = parseFloat(row[1]);
         const budget = parseFloat(row[2]);
+        const productionUnits = row.length >= 4 ? parseFloat(row[3]) : NaN;
 
         if (DashboardStore.plants[plantKey] && !isNaN(kwh) && !isNaN(budget)) {
           const plant = DashboardStore.plants[plantKey];
@@ -940,26 +1605,19 @@
           plant.budgetKwh = Math.round(budget);
           plant.deviationPct = parseFloat((((kwh - budget) / budget) * 100).toFixed(1));
           plant.costUsd = Math.round(kwh * 0.120);
+          if (!isNaN(productionUnits) && productionUnits > 0) {
+            plant.productionUnits = Math.round(productionUnits);
+            plant.ratioKwhUnit = kwh / productionUnits;
+          }
           plant.isCritical = plant.deviationPct > 0;
+          plant.alertCount = plant.isCritical ? Math.max(1, plant.alertCount) : 0;
           recordsUpdated++;
         }
       }
     }
 
-    // Recalculate totals
-    let totalKwh = 0;
-    let totalCost = 0;
-    let alerts = 0;
-    Object.values(DashboardStore.plants).forEach(p => {
-      totalKwh += p.kwh;
-      totalCost += p.costUsd;
-      if (p.isCritical) alerts++;
-    });
-
-    DashboardStore.global.totalEnergyKwh = totalKwh;
-    DashboardStore.global.energyCostUsd = totalCost;
-    DashboardStore.global.alertCount = alerts;
-
+    recalculateGlobalMetrics();
+    persistCustomPlants();
     renderAllViews();
     showToast(`✓ Datos sincronizados con éxito. (${recordsUpdated} plantas actualizadas - ISO 50001 verificado)`, 'success');
   }
@@ -969,6 +1627,8 @@
 ensamble,690000,700000,200000
 fa,1240000,1300000,205000
 rc_energy,812000,780000,200000`;
+    const demoFile = new File([demoCSV], 'telemetria_demo_clarios.csv', { type: 'text/csv' });
+    registerUploadedSource(demoFile, demoCSV, false);
     parseTelemetryCSV(demoCSV);
   }
 
@@ -988,6 +1648,165 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast('Plantilla descargada con éxito', 'success');
+  }
+
+  function initAddPlantModal() {
+    const modal = document.getElementById('modal-add-plant');
+    const form = document.getElementById('form-add-plant');
+    if (!modal || !form) return;
+
+    ['btn-open-add-plant', 'btn-sources-add-plant'].forEach(id => {
+      const button = document.getElementById(id);
+      if (button) button.addEventListener('click', openAddPlantModal);
+    });
+
+    const closeModal = () => {
+      modal.classList.remove('open');
+      const error = document.getElementById('add-plant-form-error');
+      if (error) error.hidden = true;
+    };
+    ['btn-close-add-plant', 'btn-cancel-add-plant'].forEach(id => {
+      const button = document.getElementById(id);
+      if (button) button.addEventListener('click', closeModal);
+    });
+    modal.addEventListener('click', event => {
+      if (event.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && modal.classList.contains('open')) closeModal();
+    });
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const result = createPlantFromForm(formData);
+      const error = document.getElementById('add-plant-form-error');
+      if (!result.ok) {
+        if (error) {
+          error.textContent = result.message;
+          error.hidden = false;
+        }
+        return;
+      }
+
+      if (error) error.hidden = true;
+      modal.classList.remove('open');
+      form.reset();
+      const sensorsInput = document.getElementById('plant-sensors-input');
+      if (sensorsInput) sensorsInput.value = '24';
+      renderAllViews();
+      DashboardStore.currentPlantId = result.plant.id;
+      switchView('detail');
+      showToast('✓ ' + result.plant.name + ' creada y guardada en este navegador.', 'success');
+    });
+  }
+
+  function openAddPlantModal() {
+    const modal = document.getElementById('modal-add-plant');
+    if (!modal) return;
+    modal.classList.add('open');
+    setTimeout(() => document.getElementById('plant-name-input')?.focus(), 50);
+  }
+
+  function createPlantFromForm(formData) {
+    const name = String(formData.get('plantName') || '').trim();
+    const tag = String(formData.get('plantTag') || '').trim().toUpperCase();
+    const node = String(formData.get('plantNode') || '').trim().toUpperCase();
+    const sourceUrl = String(formData.get('sourceUrl') || '').trim();
+    const safeSourceUrl = sanitizeExternalUrl(sourceUrl);
+    const kwh = Number(formData.get('currentKwh'));
+    const previousKwh = Number(formData.get('previousKwh'));
+    const budgetKwh = Number(formData.get('budgetKwh'));
+    const maxCapacityKwh = Number(formData.get('maxCapacityKwh'));
+    const productionUnits = Number(formData.get('productionUnits'));
+    const sensorsCount = Math.max(0, Number(formData.get('sensorsCount')) || 0);
+
+    if (!name || !tag || ![kwh, previousKwh, budgetKwh, maxCapacityKwh, productionUnits].every(value => Number.isFinite(value) && value > 0)) {
+      return { ok: false, message: 'Completa todos los campos obligatorios con valores mayores que cero.' };
+    }
+    if (maxCapacityKwh < kwh) {
+      return { ok: false, message: 'La capacidad máxima debe ser igual o superior al consumo actual.' };
+    }
+    if (sourceUrl && !safeSourceUrl) {
+      return { ok: false, message: 'El vínculo de la fuente debe comenzar por http:// o https://.' };
+    }
+
+    const id = createUniquePlantId(name);
+    const number = String(Object.keys(DashboardStore.plants).length + 1);
+    const deviationPct = ((kwh - budgetKwh) / budgetKwh) * 100;
+    const isCritical = deviationPct > 0;
+    const ratioKwhUnit = kwh / productionUnits;
+    const ratioTarget = budgetKwh / productionUnits;
+    const costUsd = Math.round(kwh * 0.12);
+
+    const plant = {
+      id,
+      number,
+      name,
+      fullName: name,
+      tag,
+      status: isCritical ? 'critical' : 'normal',
+      statusLabel: isCritical ? 'Alerta Activa' : 'Planta Activa',
+      isCritical,
+      isCustom: true,
+      kwh: Math.round(kwh),
+      budgetKwh: Math.round(budgetKwh),
+      maxCapacityKwh: Math.round(maxCapacityKwh),
+      costUsd,
+      ratioKwhUnit,
+      ratioTarget,
+      deviationPct,
+      productionUnits: Math.round(productionUnits),
+      productionType: 'Producción de baterías',
+      sensorsCount: Math.round(sensorsCount),
+      alertCount: isCritical ? 1 : 0,
+      nodeUri: node || 'NODE-' + tag.replace(/[^A-Z0-9]+/g, '-'),
+      sourceUrl: safeSourceUrl,
+      previous: {
+        kwh: Math.round(previousKwh),
+        costUsd: Math.round(previousKwh * 0.12),
+        ratioKwhUnit: previousKwh / productionUnits,
+        deviationPct: ((previousKwh - budgetKwh) / budgetKwh) * 100,
+        productionUnits: Math.round(productionUnits),
+        alertCount: previousKwh > budgetKwh ? 1 : 0
+      },
+      alertSnippet: isCritical ? 'Consumo por encima del presupuesto registrado' : 'Operación dentro del presupuesto energético',
+      sparklinePoints: isCritical ? [24, 26, 25, 29, 31, 34, 38, 42, 40, 44, 43, 46] : [30, 29, 31, 28, 27, 29, 26, 27, 25, 26, 24, 25],
+      processes: [
+        { name: '1. Proceso principal de manufactura', kwh: Math.round(kwh * 0.55), pct: 55, color: 'purple' },
+        { name: '2. Formación, carga y pruebas', kwh: Math.round(kwh * 0.30), pct: 30, color: 'purple-light' },
+        { name: '3. Servicios auxiliares', kwh: Math.round(kwh * 0.15), pct: 15, color: 'purple-dark' }
+      ],
+      processAlert: isCritical ? 'Consumo total por encima de la meta; revisar el proceso principal' : null,
+      gas: {
+        flowHigh: '0.6 Bar Nom',
+        flowTot: 'Pendiente integración',
+        trend: [12, 13, 12, 14, 13, 12, 13]
+      },
+      dailyData: generateDailyCurve(kwh / 30, 0.08, isCritical)
+    };
+
+    DashboardStore.plants[id] = plant;
+    registerPlantSource(plant);
+    persistCustomPlants();
+    ensureDynamicPlantUI();
+    return { ok: true, plant };
+  }
+
+  function createUniquePlantId(name) {
+    const base = String(name)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'nueva_planta';
+    let id = base;
+    let suffix = 2;
+    while (DashboardStore.plants[id]) {
+      id = base + '_' + suffix;
+      suffix += 1;
+    }
+    return id;
   }
 
   // --- MODALS & INTERACTIVE ACTIONS ---
@@ -1023,9 +1842,18 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
         // If reduced to 430 or below, bring consumption below budget
         if (temp <= 435) {
           const rc = DashboardStore.plants.rc_energy;
+          const priorKwh = rc.kwh;
+          const priorCost = rc.costUsd;
           rc.kwh = 765000;
+          rc.costUsd = Math.round(rc.kwh * 0.120);
+          rc.ratioKwhUnit = rc.kwh / rc.productionUnits;
           rc.deviationPct = -1.9;
           rc.isCritical = false;
+          rc.alertCount = 0;
+          DashboardStore.global.totalEnergyKwh -= (priorKwh - rc.kwh);
+          DashboardStore.global.energyCostUsd -= (priorCost - rc.costUsd);
+          DashboardStore.global.budgetDeviationPct = ((DashboardStore.global.totalEnergyKwh - DashboardStore.global.budgetEnergyKwh) / DashboardStore.global.budgetEnergyKwh) * 100;
+          DashboardStore.global.alertCount = Object.values(DashboardStore.plants).reduce((sum, plant) => sum + plant.alertCount, 0);
           DashboardStore.faultAcknowledged = true;
           showToast(`Setpoint ajustado a ${temp}°C. Demanda térmica normalizada bajo presupuesto.`, 'success');
         } else {
@@ -1040,13 +1868,14 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     const btnInspect = document.getElementById('btn-diag-inspect');
     const modalInspect = document.getElementById('modal-inspect');
     const btnCloseInspect = document.getElementById('btn-close-inspect');
+    const btnCloseInspectFooter = document.getElementById('btn-close-inspect-footer');
 
     if (btnInspect && modalInspect) {
       btnInspect.addEventListener('click', () => modalInspect.classList.add('open'));
     }
-    if (btnCloseInspect && modalInspect) {
-      btnCloseInspect.addEventListener('click', () => modalInspect.classList.remove('open'));
-    }
+    [btnCloseInspect, btnCloseInspectFooter].forEach(btn => {
+      if (btn && modalInspect) btn.addEventListener('click', () => modalInspect.classList.remove('open'));
+    });
 
     // 3. Acknowledge Fault Button
     const btnAck = document.getElementById('btn-diag-ack');
@@ -1101,8 +1930,82 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
   }
 
   // --- UTILITIES ---
+  function renderPercentComparison(id, currentValue, previousValue, lowerIsBetter) {
+    const element = document.getElementById(id);
+    if (!element) return 'neutral';
+    return renderPercentComparisonElement(element, currentValue, previousValue, lowerIsBetter);
+  }
+
+  function renderPercentComparisonElement(element, currentValue, previousValue, lowerIsBetter, suffix = '') {
+    const change = previousValue === 0 ? 0 : ((currentValue - previousValue) / previousValue) * 100;
+    const state = getComparisonState(change, lowerIsBetter);
+    const arrow = change > 0 ? '↑' : change < 0 ? '↓' : '•';
+    const outcome = state === 'positive' ? 'mejora' : state === 'negative' ? 'desmejora' : 'estable';
+
+    element.className = 'trend-chip trend-' + state;
+    element.textContent = arrow + ' ' + Math.abs(change).toFixed(1) + '% ' + outcome + suffix;
+    return state;
+  }
+
+  function renderPointComparison(id, currentValue, previousValue, lowerIsBetter) {
+    const element = document.getElementById(id);
+    if (!element) return 'neutral';
+    const change = currentValue - previousValue;
+    const state = getComparisonState(change, lowerIsBetter);
+    const arrow = change > 0 ? '↑' : change < 0 ? '↓' : '•';
+    const outcome = state === 'positive' ? 'mejora' : state === 'negative' ? 'desmejora' : 'estable';
+
+    element.className = 'trend-chip trend-' + state;
+    element.textContent = arrow + ' ' + Math.abs(change).toFixed(1) + ' pp ' + outcome;
+    return state;
+  }
+
+  function renderCountComparison(id, currentValue, previousValue, lowerIsBetter) {
+    const element = document.getElementById(id);
+    if (!element) return 'neutral';
+    const change = currentValue - previousValue;
+    const state = getComparisonState(change, lowerIsBetter);
+    const arrow = change > 0 ? '↑' : change < 0 ? '↓' : '•';
+    const descriptor = change > 0 ? 'más' : change < 0 ? 'menos' : 'sin cambio';
+
+    element.className = 'trend-chip trend-' + state;
+    element.textContent = change === 0 ? '• Sin cambio' : arrow + ' ' + Math.abs(change) + ' ' + descriptor;
+    return state;
+  }
+
+  function getComparisonState(change, lowerIsBetter) {
+    if (Math.abs(change) < 0.001) return 'neutral';
+    const isImprovement = lowerIsBetter ? change < 0 : change > 0;
+    return isImprovement ? 'positive' : 'negative';
+  }
+
+  function setKpiCardState(id, state) {
+    const card = document.getElementById(id);
+    if (!card) return;
+    card.classList.remove('state-positive', 'state-negative', 'state-neutral');
+    card.classList.add('state-' + state);
+  }
+
+  function updateComparisonPeriodLabel() {
+    const monthSelect = document.getElementById('select-filter-month');
+    const yearSelect = document.getElementById('select-filter-year');
+    if (!monthSelect || !yearSelect) return;
+
+    const monthLabels = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+    const selectedMonth = Number(monthSelect.value);
+    const selectedYear = Number(yearSelect.value);
+    const previousMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+    const previousYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+    setElementText('detail-comparison-period', 'VS ' + monthLabels[previousMonth] + ' ' + previousYear);
+    setElementText('source-current-period', monthLabels[selectedMonth] + ' ' + selectedYear);
+  }
+
   function formatNumber(num) {
     return Number(num).toLocaleString('en-US');
+  }
+
+  function formatSigned(num, digits = 1) {
+    return (num > 0 ? '+' : '') + Number(num).toFixed(digits);
   }
 
   function setElementText(id, text) {

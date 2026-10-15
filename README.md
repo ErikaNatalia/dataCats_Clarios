@@ -1,97 +1,136 @@
-# Clarios SCADA | Consola Industrial de Monitoreo de Energía & Gas
+# Clarios SCADA | Dashboard de Energía y Gas
 
-Dashboard industrial automotriz para plantas de baterías **Clarios** (Ensamble & OREC, F&A Formación, y RC Energy & Gas), desarrollado según las especificaciones de diseño y flujos de usuario validados en Figma/Stitch.
+Dashboard industrial para monitorear el consumo energético, costos, producción, alertas y trazabilidad de datos de las plantas de baterías Clarios.
 
----
+La aplicación incluye una vista ejecutiva multi-planta, una vista reutilizable de detalle por fábrica, registro dinámico de nuevas plantas y un módulo de fuentes de datos.
 
-## 🎨 Sistema de Diseño y Paleta de Colores
-- **Fondo Primario:** Carbón obscuro profundo `#121418` con texturas de blueprint técnico.
-- **Acentos de Marca Clarios:** Púrpura eléctrico `#7C4DFF` / `#651FFF` con iluminación difusa.
-- **Métricas Favorables:** Verde Neón `#00E676` (Dentro de presupuesto / operación óptima).
-- **Desviaciones Presupuestarias y Alertas:** Rojo Fuego `#FF3D57` (Sobreconsumo / Critical Trip).
-- **Alertas de Precaución:** Ámbar `#FFAB00`.
-- **Telemetría y Enlaces de Datos:** Cian `#00E5FF`.
+## Funcionalidades principales
 
----
+- KPIs globales comparados contra el promedio histórico.
+- KPIs por planta comparados contra el corte o mes anterior.
+- Resumen ejecutivo con balance, mayor oportunidad e impacto económico.
+- Tarjetas de plantas con consumo, costo, ratio unitario, desviación y alertas.
+- Vista de detalle reutilizable para cualquier planta registrada.
+- Velocímetro dinámico de demanda eléctrica con rangos operativos.
+- Gráficas de consumo diario, procesos y gas.
+- Registro de nuevas fábricas desde el dashboard.
+- Persistencia local de plantas personalizadas mediante `localStorage`.
+- Inventario y trazabilidad de fuentes de datos.
+- Vista previa y descarga de archivos CSV.
+- Registro de enlaces externos de Excel o repositorios de datos.
+- Carga de telemetría CSV y DAT con actualización de KPIs.
+- Registro de archivos XLSX para consulta y auditoría.
+- Navegación responsive para escritorio, tablet y móvil.
 
-## 🚀 Arquitectura y Vistas Implementadas
+## Vistas disponibles
 
-### 1. Vista 1: Landing / Vista General Multi-Planta
-- **Header Global SCADA:** Identidad corporativa Clarios SCADA, fecha de ciclo operativo (2024 Septiembre), selector de vistas, botón de descarga de informe consolidado y sincronización en tiempo real (`SYNC: 12s ago`).
-- **KPIs Globales de Cabecera:** 
-  - Gasto de Energía General: `2,808,000 kWh` (+2.1% vs mes anterior).
-  - Facturación Eléctrica + Gas: `$536,960 USD` (-1.4% dentro de presupuesto).
-  - Desviación Consolidada: `+0.3%` (Tolerancia ±2%).
-  - Monitoreo de Alertas: `2 alertas` activas en planta RC Energy.
-- **Blueprint Técnico de Vehículo Eléctrico (EV Chassis):** 
-  - Gráfico vectorial escalable de plataforma skateboard de auto eléctrico.
-  - **3 Tarjetas en Forma de Batería Automotriz** con bornes físicos 3D (+ Rojo Cobre, − Plata Cobalto), ranuras de disipación y aletas de sujeción:
-    1. *Ensamble & OREC*: 684,000 kWh, ratio 3.42 kWh/u, costo $81,060 USD, desviación -2.1% (Verde Neón), mini curva 24h.
-    2. *F&A (Formación)*: 1,260,000 kWh, ratio 6.08 kWh/u, costo $151,200 USD, desviación -3.2% (Verde Neón), mini curva de carga DC.
-    3. *RC Energy & Gas*: 864,000 kWh, ratio 4.32 kWh/u, costo $103,680 USD, desviación +8.6% (Rojo Fuego, Alerta Activa / Foco Crítico), pico en fundición.
-- **Widget de Carga de Telemetría Masiva:** 
-  - Zona interactiva Drag-and-Drop para archivos `.XLSX`, `.CSV` y `.DAT` con validación automática bajo norma **ISO 50001**.
-  - Recálculo dinámico e instantáneo de todos los velocímetros y gráficas del dashboard al soltar archivos.
-  - Botón de carga rápida de datos de prueba y descarga de plantilla CSV.
+### Vista general
 
----
+Presenta el estado consolidado de la operación, comparaciones históricas, lectura ejecutiva y tarjetas de todas las plantas.
 
-### 2. Vista 2, 3 y 4: Detalle de Planta (Planta RC Energy & Gas)
-- **Barra Lateral Persistente (30% de ancho):**
-  - Lista de los 3 módulos de batería con indicador de estado (Activo / Nominal / Sobreconsumo).
-  - Acceso directo para alternar entre plantas con un solo clic.
-  - Acciones rápidas: *Ajustar Setpoint Quemadores* y *Descargar Logs SCADA (.CSV)*.
-- **Área Principal de Contenido (70% de ancho) - Patrón en Z:**
-  - **Barra Superior de KPIs:**
-    - Total kWh: `864,000` (+10.7% vs 780k ppto).
-    - Costo de Energía: `$103,680 USD`.
-    - Consumo Unitario: `4.32 kWh/u` (`+8.6% OFF-BUDGET`).
-    - Desviación Presupuesto: `+8.6%` (Gasto Excedente).
-    - Producción: `200,000` Baterías SLI/AGM (100% cuota).
-    - Estado SCADA: `ALERTA CONSUMO ALTO` (54 sensores IoT).
-  - **Sección de Gráficas de Proceso:**
-    - *Energy Consumption*: Gráfica lineal de series de tiempo de 30 días (Real en Púrpura Clarios vs Meta Máx 38,400 kWh/d).
-    - *Consumption by Process Clave*: Gráficas de barras horizontales por proceso (Smelting & Hornos 52%, Formación & Carga 31%, Chilling 17%).
-    - *RC Gas Monitor*: Monitoreo de flujo y presión de gas (1.8 Bar High, 9,420 Nm³).
-  - **Velocímetro Automotriz de Demanda Eléctrica (Tachometer Gauge):**
-    - Cluster análogo/digital renderizado en Canvas de alta resolución.
-    - Arco graduado con zonas: Verde Neón (0 a 700k), Ámbar (700k a 780k), Rojo Fuego (780k a 1,000k).
-    - Aguja animada con interpolación dinámica y reflejo central.
-    - Lectura digital central con **cambio de color automático**: Rojo Fuego si excede presupuesto o Verde Neón si está en rango seguro.
-    - Panel lateral de calibración y rango (Promedio meses anteriores, posición de aguja y capacidad máxima contratada).
-  - **Tarjeta de Diagnóstico "Check Engine":**
-    - Ícono automotriz con luz de advertencia.
-    - Reporte de disparo crítico de intensidad térmica.
-    - Botones interactivos para confirmar falla (*Acknowledge Fault*) e inspeccionar telemetría (*Inspect SCADA* con tabla Modbus en vivo).
-  - **Modal de Ajuste de Setpoint Térmico:**
-    - Slider interactivo para reducir la temperatura de quemadores de 470°C a 430°C.
-    - Al aplicar el setpoint óptimo, el consumo baja automáticamente por debajo del presupuesto, el velocímetro pasa a **Verde Neón** y la alarma SCADA se desactiva.
+### Detalle de planta
 
----
+La misma vista se reutiliza para Ensamble & OREC, F&A, RC Energy & Gas y cualquier planta creada posteriormente. Incluye:
 
-## 💻 Cómo ejecutar el proyecto
+- Consumo y costo.
+- Comparación contra el corte anterior.
+- Desviación presupuestaria.
+- Ratio energético por unidad.
+- Producción y estado SCADA.
+- Procesos de mayor consumo.
+- Monitor de gas.
+- Velocímetro y diagnóstico operativo.
 
-No requiere dependencias externas complejas ni pasos de compilación. Puede ejecutarse directamente:
+### Fuentes de datos
 
-### Opción 1: Abrir directamente en el navegador
-Abre el archivo `index.html` en cualquier navegador web moderno (Chrome, Edge, Firefox, Safari).
+Muestra el recorrido de la información desde el archivo de origen hasta los KPIs, junto con:
 
-### Opción 2: Levantar con servidor web local
-```bash
-cd /home/usuario/proyectos/dashClarios
+- Inventario de fuentes.
+- Alcance y formato.
+- Estado de validación.
+- Período o fecha de carga.
+- Vista previa.
+- Descarga o apertura del vínculo original.
 
-# Con Python 3:
-python3 -m http.server 8080
+También puede abrirse directamente con:
 
-# O con npx serve:
-npx serve .
+```text
+http://127.0.0.1:3000/#sources
 ```
-Luego visita `http://localhost:8080` en tu navegador.
 
----
+## Tecnologías
 
-## 🔒 Cumplimiento de Seguridad (SecureCoder)
-- Manipulación segura del DOM con métodos nativos (`document.createElement`, `textContent`, `setAttribute`).
-- Cero uso de `innerHTML` con datos no confiables.
-- Validación y sanitización estricta de archivos CSV y hojas de cálculo.
-- Aislamiento de ejecución sin dependencias vulnerables en tiempo de ejecución.
+- HTML5
+- CSS3
+- JavaScript ES Modules
+- Vite 5
+- Almacenamiento local del navegador
+- SVG dinámico para gráficas y velocímetro
+
+## Ejecutar el proyecto
+
+Requisitos:
+
+- Node.js 18 o superior.
+- npm.
+
+```bash
+npm install
+npm run dev
+```
+
+Abrir:
+
+```text
+http://127.0.0.1:3000
+```
+
+En PowerShell también puede utilizarse `npm.cmd`:
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
+
+## Generar la versión de producción
+
+```bash
+npm run build
+```
+
+El resultado se genera en `dist/`.
+
+Para probar esa versión:
+
+```bash
+npm run preview
+```
+
+## Formato de telemetría
+
+Los archivos CSV deben incluir como mínimo:
+
+```csv
+Planta,Consumo_kWh,Presupuesto_kWh,Unidades
+ensamble,684000,700000,200000
+fa,1260000,1300000,207200
+rc_energy,864000,780000,200000
+```
+
+La columna `Planta` debe corresponder al identificador interno de la fábrica.
+
+> Los archivos CSV y DAT pueden actualizar los KPIs. Los archivos XLSX quedan registrados como fuente, pero todavía no son interpretados para recalcular indicadores.
+
+## Persistencia
+
+Las plantas creadas desde la interfaz se guardan en el navegador bajo la clave:
+
+```text
+clarios.customPlants.v1
+```
+
+Esta persistencia es local al dispositivo y al navegador. No reemplaza una base de datos compartida.
+
+## Documentación de la entrega
+
+El detalle completo de cambios, fórmulas, validaciones y pasos sugeridos para Git se encuentra en [DOCUMENTACION_IMPLEMENTACION.md](DOCUMENTACION_IMPLEMENTACION.md).
