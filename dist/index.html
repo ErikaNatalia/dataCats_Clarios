@@ -14,9 +14,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Core Styles -->
-  <script type="module" crossorigin src="/assets/index-DoskwXVU.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CRUt15Au.css">
+  <!-- Core Styles -->
+  <script type="module" crossorigin src="/assets/index-Cuip4grQ.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BZJiVe8B.css">
 </head>
 <body>
 
@@ -47,18 +47,43 @@
       <button id="tab-detail" class="nav-tab-btn danger" type="button">
         <span class="tab-dot"></span> Detalle Planta RC Energy & Gas
       </button>
+      <button id="tab-sources" class="nav-tab-btn" type="button">
+        <span class="tab-dot"></span> Fuentes de Datos
+      </button>
     </nav>
 
     <!-- Header Actions & Utilities -->
     <div class="header-actions">
-      <div class="date-pill">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-        <span>2024 Septiembre</span>
+      <!-- Interactive Year and Month Filter -->
+      <div class="date-filter-group" aria-label="Filtro de Período Operativo">
+        <div class="date-select-pill">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <select id="select-filter-month" class="scada-select" title="Seleccionar Mes">
+            <option value="0">Enero</option>
+            <option value="1">Febrero</option>
+            <option value="2">Marzo</option>
+            <option value="3">Abril</option>
+            <option value="4">Mayo</option>
+            <option value="5">Junio</option>
+            <option value="6">Julio</option>
+            <option value="7">Agosto</option>
+            <option value="8" selected>Septiembre</option>
+            <option value="9">Octubre</option>
+            <option value="10">Noviembre</option>
+            <option value="11">Diciembre</option>
+          </select>
+          <select id="select-filter-year" class="scada-select" title="Seleccionar Año">
+            <option value="2023">2023</option>
+            <option value="2024" selected>2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
       </div>
 
       <button id="btn-quick-report" class="btn-primary-purple" type="button">
@@ -67,14 +92,14 @@
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Descargar Informe
+        <span class="btn-text-responsive">Descargar Informe</span>
       </button>
 
-      <button class="btn-icon-ghost" title="Notificaciones SCADA" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-        </svg>
+      <!-- Hamburger Menu Button for Tablet & Mobile -->
+      <button id="btn-mobile-menu-toggle" class="btn-hamburger" type="button" aria-label="Abrir Menú de Navegación" title="Menú">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
       </button>
     </div>
   </header>
@@ -108,12 +133,16 @@
         <p class="hero-subtext">
           Selecciona una planta para inspeccionar consumo, eficiencia energética y desviaciones presupuestarias en tiempo real bajo norma ISO 50001.
         </p>
+        <div class="hero-actions">
+          <button id="btn-open-add-plant" class="btn-primary-purple" type="button">＋ Registrar nueva planta</button>
+          <button id="btn-open-sources" class="btn-ghost-sm" type="button">Ver fuentes de datos →</button>
+        </div>
       </section>
 
       <!-- Global KPI Row (4 High-level cards) -->
       <section class="kpi-row-landing" aria-label="Indicadores Globales">
         <!-- 1. Gasto de Energía General -->
-        <div class="kpi-card purple">
+        <div id="landing-kpi-energy-card" class="kpi-card purple">
           <div class="kpi-header">
             <span class="kpi-title">Gasto de Energía General</span>
             <div class="kpi-icon-wrap">
@@ -127,13 +156,14 @@
             <span class="kpi-unit">kWh</span>
           </div>
           <div class="kpi-footer">
-            <span class="kpi-badge badge-green">+2.1%</span>
-            <span class="kpi-footer-sub">vs. Mes Anterior</span>
+            <span id="landing-global-kwh-trend" class="trend-chip trend-positive">↓ 2.2% mejora</span>
+            <span class="kpi-footer-sub">vs promedio histórico</span>
           </div>
+          <div id="landing-global-kwh-baseline" class="kpi-baseline">Promedio: 2,870,000 kWh</div>
         </div>
 
         <!-- 2. Gasto Total Energía USD -->
-        <div class="kpi-card green">
+        <div id="landing-kpi-cost-card" class="kpi-card purple">
           <div class="kpi-header">
             <span class="kpi-title">Gasto Total Energía</span>
             <div class="kpi-icon-wrap">
@@ -148,13 +178,14 @@
             <span class="kpi-unit">USD</span>
           </div>
           <div class="kpi-footer">
-            <span class="kpi-badge badge-green">-1.4%</span>
-            <span class="kpi-footer-sub">Dentro de Presupuesto</span>
+            <span id="landing-global-cost-trend" class="trend-chip trend-positive">↓ 2.1% mejora</span>
+            <span class="kpi-footer-sub">vs promedio histórico</span>
           </div>
+          <div id="landing-global-cost-baseline" class="kpi-baseline">Promedio: $548,200 USD</div>
         </div>
 
         <!-- 3. Desviación Presupuesto -->
-        <div class="kpi-card amber">
+        <div id="landing-kpi-deviation-card" class="kpi-card purple">
           <div class="kpi-header">
             <span class="kpi-title">Desviación Presupuesto</span>
             <div class="kpi-icon-wrap">
@@ -170,12 +201,14 @@
             <span class="kpi-unit">TARGET 0.0%</span>
           </div>
           <div class="kpi-footer">
-            <span class="kpi-footer-sub">Tolerancia operacional: ±2%</span>
+            <span id="landing-global-deviation-trend" class="trend-chip trend-positive">↓ 2.4 pp mejora</span>
+            <span class="kpi-footer-sub">vs promedio histórico</span>
           </div>
+          <div id="landing-global-deviation-baseline" class="kpi-baseline">Promedio: +2.7% · Tolerancia ±2%</div>
         </div>
 
         <!-- 4. Estado de Plantas -->
-        <div class="kpi-card red">
+        <div id="landing-kpi-alerts-card" class="kpi-card state-negative">
           <div class="kpi-header">
             <span class="kpi-title">Estado de Plantas</span>
             <div class="kpi-icon-wrap">
@@ -190,8 +223,33 @@
             <span id="landing-global-alerts" class="kpi-value">2 alertas</span>
           </div>
           <div class="kpi-footer">
-            <span class="kpi-badge badge-red">RC ENERGY & GAS</span>
-            <span class="kpi-footer-sub">Línea de Gas - Sobrefiujo</span>
+            <span id="landing-global-alerts-trend" class="trend-chip trend-positive">↓ 2 menos</span>
+            <span class="kpi-footer-sub">vs promedio histórico</span>
+          </div>
+          <div id="landing-global-alerts-baseline" class="kpi-baseline critical-context">Foco actual: RC Energy & Gas</div>
+        </div>
+      </section>
+
+      <section class="decision-strip" aria-label="Lectura ejecutiva del período">
+        <div class="decision-strip-heading">
+          <span class="decision-kicker">LECTURA EJECUTIVA</span>
+          <span class="decision-method">General vs histórico · Plantas vs corte anterior</span>
+        </div>
+        <div class="decision-insights">
+          <div class="decision-insight">
+            <span class="decision-insight-label">Balance del período</span>
+            <strong id="decision-balance">2 de 3 plantas mejoran</strong>
+            <span id="decision-balance-detail">Consumo neto: 4,000 kWh menos</span>
+          </div>
+          <div class="decision-insight priority">
+            <span class="decision-insight-label">Mayor oportunidad</span>
+            <strong id="decision-focus">RC Energy & Gas</strong>
+            <span id="decision-focus-detail">+52,000 kWh vs corte anterior</span>
+          </div>
+          <div class="decision-insight">
+            <span class="decision-insight-label">Impacto estimado</span>
+            <strong id="decision-impact">+$6,240 USD</strong>
+            <span id="decision-impact-detail">Costo incremental del foco crítico</span>
           </div>
         </div>
       </section>
@@ -226,8 +284,8 @@
             <span>Esquema de Distribución por Planta • Células Clarios</span>
           </div>
           <div class="blueprint-legend">
-            <div class="legend-item"><span class="legend-dot green"></span> 2 Plantas en Rango</div>
-            <div class="legend-item"><span class="legend-dot red"></span> 1 Desviación Crítica</div>
+            <div class="legend-item"><span class="legend-dot green"></span> <span id="legend-normal-count">2 Plantas en Rango</span></div>
+            <div class="legend-item"><span class="legend-dot red"></span> <span id="legend-critical-count">1 Desviación Crítica</span></div>
           </div>
         </div>
 
@@ -259,7 +317,10 @@
 
               <div class="battery-metric-main">
                 <div class="battery-metric-kwh">684,000 kWh</div>
-                <div class="battery-metric-label">Consumo Eléctrico</div>
+                <div class="battery-metric-context">
+                  <span class="battery-metric-label">Consumo Eléctrico</span>
+                  <span class="plant-trend-chip trend-positive">↓ 2.4% vs corte anterior</span>
+                </div>
               </div>
 
               <div class="battery-submetrics-grid">
@@ -273,7 +334,7 @@
                 </div>
                 <div class="submetric-item">
                   <span class="submetric-title">Desviación</span>
-                  <span class="submetric-val submetric-dev green">-2.1% A favor</span>
+                  <span class="submetric-val submetric-dev green">-2.3% A favor</span>
                 </div>
               </div>
 
@@ -324,7 +385,10 @@
 
               <div class="battery-metric-main">
                 <div class="battery-metric-kwh">1,260,000 kWh</div>
-                <div class="battery-metric-label">Consumo Eléctrico + Formación</div>
+                <div class="battery-metric-context">
+                  <span class="battery-metric-label">Consumo Eléctrico + Formación</span>
+                  <span class="plant-trend-chip trend-positive">↓ 3.0% vs corte anterior</span>
+                </div>
               </div>
 
               <div class="battery-submetrics-grid">
@@ -338,7 +402,7 @@
                 </div>
                 <div class="submetric-item">
                   <span class="submetric-title">Desviación</span>
-                  <span class="submetric-val submetric-dev green">-3.2% A favor</span>
+                  <span class="submetric-val submetric-dev green">-3.1% A favor</span>
                 </div>
               </div>
 
@@ -389,7 +453,10 @@
 
               <div class="battery-metric-main">
                 <div class="battery-metric-kwh" style="color: var(--fire-red);">864,000 kWh</div>
-                <div class="battery-metric-label">Consumo Eléctrico • Gas</div>
+                <div class="battery-metric-context">
+                  <span class="battery-metric-label">Consumo Eléctrico • Gas</span>
+                  <span class="plant-trend-chip trend-negative">↑ 6.4% vs corte anterior</span>
+                </div>
               </div>
 
               <div class="battery-submetrics-grid">
@@ -403,7 +470,7 @@
                 </div>
                 <div class="submetric-item">
                   <span class="submetric-title">Desviación</span>
-                  <span class="submetric-val submetric-dev red">+8.6% Gas</span>
+                  <span class="submetric-val submetric-dev red">+10.8% Exceso</span>
                 </div>
               </div>
 
@@ -433,7 +500,7 @@
 
         <!-- Blueprint Footer Strip -->
         <div class="blueprint-footer-specs">
-          <div>ARQUITECTURA DE BATERÍA INDUSTRIAL: <span>3 MÓDULOS DE PROCESO ACTIVO (CLARIOS PROTOCOL V4.9)</span></div>
+          <div>ARQUITECTURA DE BATERÍA INDUSTRIAL: <span id="blueprint-module-count">3 MÓDULOS DE PROCESO ACTIVO (CLARIOS PROTOCOL V4.9)</span></div>
           <div>FRECUENCIA: <span>60.02 Hz</span> • FACTOR POTENCIA: <span>0.94 FP</span></div>
         </div>
       </section>
@@ -531,7 +598,7 @@
 
         <div class="sidebar-header">
           <span class="sidebar-title">Módulos de Planta</span>
-          <span class="sidebar-count-badge">1 Activo / 3 Total</span>
+          <span id="sidebar-plant-count" class="sidebar-count-badge">1 Activo / 3 Total</span>
         </div>
 
         <!-- 3 Quick Switch Battery Cards -->
@@ -548,7 +615,7 @@
             <div class="sidebar-submetrics-row">
               <div><span class="label">Ratio</span><span class="val">3.42</span></div>
               <div><span class="label">Costo</span><span class="val">$81k</span></div>
-              <div><span class="label">Desv</span><span class="val" style="color:var(--neon-green)">-2.1%</span></div>
+              <div><span class="label">Desv</span><span class="val" style="color:var(--neon-green)">-2.3%</span></div>
             </div>
             <div class="sidebar-card-bottom">
               <span style="color:var(--neon-green); font-weight:700;">● NOMINAL</span>
@@ -567,7 +634,7 @@
             <div class="sidebar-submetrics-row">
               <div><span class="label">Ratio</span><span class="val">6.08</span></div>
               <div><span class="label">Costo</span><span class="val">$151k</span></div>
-              <div><span class="label">Desv</span><span class="val" style="color:var(--neon-green)">-3.2%</span></div>
+              <div><span class="label">Desv</span><span class="val" style="color:var(--neon-green)">-3.1%</span></div>
             </div>
             <div class="sidebar-card-bottom">
               <span style="color:var(--neon-green); font-weight:700;">● NOMINAL</span>
@@ -587,7 +654,7 @@
             <div class="sidebar-submetrics-row">
               <div><span class="label">Ratio</span><span class="val">4.32</span></div>
               <div><span class="label">Costo</span><span class="val">$103k</span></div>
-              <div><span class="label">Desv</span><span class="val" style="color:var(--fire-red)">+8.6%</span></div>
+              <div><span class="label">Desv</span><span class="val" style="color:var(--fire-red)">+10.8%</span></div>
             </div>
             <div class="sidebar-card-bottom">
               <span style="color:var(--fire-red); font-weight:700;">▲ SOBRECONSUMO</span>
@@ -646,6 +713,7 @@
           </div>
 
           <div class="detail-top-status">
+            <span id="detail-comparison-period" class="comparison-period-pill">VS AGO 2024</span>
             <span class="telemetry-node-info">Node: <span id="detail-node-id">NODE-MTY-RC-01</span></span>
             <div id="detail-header-status-pill" class="status-badge-live danger">
               <span class="pulse-dot"></span>
@@ -657,46 +725,70 @@
         <!-- High-level KPI Summary Row (6-card grid) -->
         <div class="detail-kpi-grid">
           <!-- 1. TOTAL kWh -->
-          <div class="detail-kpi-card">
+          <div id="detail-card-kwh" class="detail-kpi-card">
             <span class="detail-kpi-title">Total kWh</span>
             <div id="detail-kpi-total-kwh" class="detail-kpi-val">864,000</div>
-            <div id="detail-kpi-kwh-sub" class="detail-kpi-sub">+10.7% vs 780k ppto</div>
+            <div id="detail-kpi-kwh-sub" class="detail-kpi-context">Meta: 780,000 kWh</div>
+            <div class="detail-kpi-trend-row">
+              <span id="detail-kpi-kwh-trend" class="trend-chip trend-negative">↑ 6.4% desmejora</span>
+              <span class="trend-period">vs corte anterior</span>
+            </div>
           </div>
 
           <!-- 2. ENERGY COST -->
-          <div class="detail-kpi-card">
-            <span class="detail-kpi-title">Energy Cost</span>
+          <div id="detail-card-cost" class="detail-kpi-card">
+            <span class="detail-kpi-title">Costo energía</span>
             <div id="detail-kpi-cost" class="detail-kpi-val">$103,680 USD</div>
-            <div class="detail-kpi-sub">CFE/PPA $0.120 / kWh neto</div>
+            <div id="detail-kpi-cost-context" class="detail-kpi-context">Tarifa neta: $0.120 / kWh</div>
+            <div class="detail-kpi-trend-row">
+              <span id="detail-kpi-cost-trend" class="trend-chip trend-negative">↑ 6.4% desmejora</span>
+              <span class="trend-period">vs corte anterior</span>
+            </div>
           </div>
 
           <!-- 3. CONSUMO UNITARIO -->
-          <div class="detail-kpi-card">
+          <div id="detail-card-ratio" class="detail-kpi-card">
             <span class="detail-kpi-title">Consumo Unitario</span>
             <div id="detail-kpi-unit-ratio" class="detail-kpi-val">4.32 kWh/u</div>
-            <div id="detail-kpi-badge-ratio" class="detail-kpi-badge badge-danger">+8.6% OFF-BUDGET</div>
-            <div id="detail-kpi-unit-target" class="detail-kpi-sub">Neto: 3.98 kWh/u</div>
+            <div id="detail-kpi-badge-ratio" class="detail-kpi-badge badge-danger">+8.5% SOBRE META</div>
+            <div id="detail-kpi-unit-target" class="detail-kpi-context">Meta: 3.98 kWh/u</div>
+            <div class="detail-kpi-trend-row">
+              <span id="detail-kpi-ratio-trend" class="trend-chip trend-negative">↑ 5.1% desmejora</span>
+              <span class="trend-period">vs corte anterior</span>
+            </div>
           </div>
 
           <!-- 4. DESVIACIÓN PPTO -->
-          <div class="detail-kpi-card">
+          <div id="detail-card-deviation" class="detail-kpi-card">
             <span class="detail-kpi-title">Desviación Ppto</span>
-            <div id="detail-kpi-deviation" class="detail-kpi-val red">+8.6%</div>
-            <div id="detail-kpi-dev-sub" class="detail-kpi-sub">Gasto Excedente</div>
+            <div id="detail-kpi-deviation" class="detail-kpi-val red">+10.8%</div>
+            <div id="detail-kpi-dev-sub" class="detail-kpi-context">Gasto excedente</div>
+            <div class="detail-kpi-trend-row">
+              <span id="detail-kpi-dev-trend" class="trend-chip trend-negative">↑ 6.1 pp desmejora</span>
+              <span class="trend-period">vs corte anterior</span>
+            </div>
           </div>
 
           <!-- 5. PRODUCCIÓN EQ -->
-          <div class="detail-kpi-card">
+          <div id="detail-card-production" class="detail-kpi-card">
             <span class="detail-kpi-title">Producción EQ</span>
             <div id="detail-kpi-prod-qty" class="detail-kpi-val">200,000</div>
-            <div id="detail-kpi-prod-sub" class="detail-kpi-sub">Baterías SLI / AGM (100% cuota)</div>
+            <div id="detail-kpi-prod-sub" class="detail-kpi-context">Baterías SLI / AGM</div>
+            <div class="detail-kpi-trend-row">
+              <span id="detail-kpi-prod-trend" class="trend-chip trend-positive">↑ 1.3% mejora</span>
+              <span class="trend-period">vs corte anterior</span>
+            </div>
           </div>
 
           <!-- 6. ESTADO SCADA -->
-          <div class="detail-kpi-card">
+          <div id="detail-card-scada" class="detail-kpi-card">
             <span class="detail-kpi-title">Estado SCADA</span>
             <div id="detail-kpi-scada-status" class="detail-kpi-val red">ALERTA CONSUMO ALTO</div>
-            <div id="detail-kpi-scada-sensors" class="detail-kpi-sub">54 Sensores IoT</div>
+            <div id="detail-kpi-scada-sensors" class="detail-kpi-context">54 Sensores IoT</div>
+            <div class="detail-kpi-trend-row">
+              <span id="detail-kpi-scada-trend" class="trend-chip trend-negative">↑ 1 alerta nueva</span>
+              <span class="trend-period">vs corte anterior</span>
+            </div>
           </div>
         </div>
 
@@ -790,20 +882,86 @@
                 </svg>
                 Velocímetro de Demanda Eléctrica
               </span>
-              <span class="tachometer-cluster-sub">SCADA Analog Instrumentation Cluster • Planta RC Energy</span>
+              <span id="tachometer-cluster-sub" class="tachometer-cluster-sub">SCADA · RC Energy &amp; Gas</span>
             </div>
 
             <div class="tachometer-body">
-              <!-- Visual Analog Dial -->
+              <!-- Visual Analog Dial from Stitch Design System -->
               <div class="gauge-visual-wrap">
                 <div class="gauge-canvas-container">
                   <div class="gauge-brandmark-center" title="Clarios Industrial Instrumentation">
                     <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Brandmark" class="gauge-brandmark-img">
                   </div>
-                  <canvas id="tachometer-canvas"></canvas>
+
+                  <!-- Stitch Vector Tachometer SVG -->
+                  <svg id="stitch-speedometer-svg" class="stitch-gauge-svg" viewBox="0 0 400 232" preserveAspectRatio="xMidYMid meet" aria-label="Demanda eléctrica actual frente al límite presupuestario">
+                    <defs>
+                      <filter id="redNeonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="6" result="blur"></feGaussianBlur>
+                        <feMerge>
+                          <feMergeNode in="blur"></feMergeNode>
+                          <feMergeNode in="SourceGraphic"></feMergeNode>
+                        </feMerge>
+                      </filter>
+                      <filter id="greenNeonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="6" result="blur"></feGaussianBlur>
+                        <feMerge>
+                          <feMergeNode in="blur"></feMergeNode>
+                          <feMergeNode in="SourceGraphic"></feMergeNode>
+                        </feMerge>
+                      </filter>
+                      <linearGradient id="speedGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#00E676"></stop>
+                        <stop offset="60%" stop-color="#FFAB00"></stop>
+                        <stop offset="78%" stop-color="#FFAB00"></stop>
+                        <stop offset="85%" stop-color="#FF5449"></stop>
+                        <stop offset="100%" stop-color="#ba1a1a"></stop>
+                      </linearGradient>
+                    </defs>
+                    <!-- Outer Decorative Arc -->
+                    <path d="M 40,200 A 160,160 0 0,1 360,200" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-linecap="round" stroke-width="22"></path>
+                    <!-- Active Colored Track -->
+                    <path id="stitch-gauge-track" d="M 40,200 A 160,160 0 0,1 360,200" fill="none" stroke="url(#speedGaugeGrad)" stroke-linecap="round" stroke-width="16"></path>
+                    <!-- Overconsumption Glow Sector -->
+                    <path id="stitch-gauge-alert-sector" d="M 288,72 A 160,160 0 0,1 334,112" fill="none" filter="url(#redNeonGlow)" stroke="#FF3D57" stroke-linecap="round" stroke-width="20"></path>
+                    <!-- Radial Tick Marks -->
+                    <line id="gauge-tick-line-0" stroke="rgba(255,255,255,0.4)" stroke-width="2" x1="40" x2="56" y1="200" y2="200"></line>
+                    <text id="gauge-tick-0" font-size="10" fill="#A2A9B8" text-anchor="middle" x="45" y="218" font-family="var(--font-mono)">0</text>
+                    
+                    <line id="gauge-tick-line-20" stroke="rgba(255,255,255,0.4)" stroke-width="2" x1="72" x2="85" y1="130" y2="137"></line>
+                    <text id="gauge-tick-20" font-size="10" fill="#A2A9B8" text-anchor="middle" x="68" y="125" font-family="var(--font-mono)">200k</text>
+                    
+                    <line id="gauge-tick-line-40" stroke="rgba(255,255,255,0.4)" stroke-width="2" x1="125" x2="135" y1="76" y2="88"></line>
+                    <text id="gauge-tick-40" font-size="10" fill="#A2A9B8" text-anchor="middle" x="120" y="68" font-family="var(--font-mono)">400k</text>
+                    
+                    <line id="gauge-tick-line-60" stroke="rgba(255,255,255,0.4)" stroke-width="2" x1="200" x2="200" y1="42" y2="58"></line>
+                    <text id="gauge-tick-60" font-size="10" fill="#A2A9B8" text-anchor="middle" x="200" y="32" font-family="var(--font-mono)">600k</text>
+                    
+                    <!-- Dynamic operational budget marker -->
+                    <line id="stitch-gauge-budget-tick" stroke="#FFAB00" stroke-width="4" x1="288" x2="276" y1="72" y2="84"></line>
+                    <circle id="stitch-gauge-budget-dot" cx="288" cy="72" fill="#FFAB00" r="4"></circle>
+                    <text id="stitch-gauge-budget-label" font-size="10" font-weight="bold" fill="#FFAB00" text-anchor="end" x="326" y="96" font-family="var(--font-mono)">META 780k</text>
+                    
+                    <!-- 1M (MAX FSD) -->
+                    <line id="gauge-tick-line-max" stroke="#FF3D57" stroke-width="2" x1="360" x2="344" y1="200" y2="200"></line>
+                    <text id="gauge-tick-max" font-size="10" fill="#FF3D57" text-anchor="middle" x="355" y="218" font-family="var(--font-mono)">950k</text>
+                    
+                    <!-- Dynamic Animated Needle Group (needle points from 200,200 to position) -->
+                    <g id="stitch-needle-group" style="transform-origin: 200px 200px; transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                      <line class="stitch-needle-line" data-needle-length="160" stroke="rgba(0,0,0,0.6)" stroke-linecap="round" stroke-width="6" x1="200" x2="330" y1="200" y2="108"></line>
+                      <line id="stitch-needle-glow-line" class="stitch-needle-line" data-needle-length="156" filter="url(#redNeonGlow)" stroke="#FF3D57" stroke-linecap="round" stroke-width="4.5" x1="200" x2="326" y1="200" y2="110"></line>
+                      <line class="stitch-needle-line" data-needle-length="156" stroke="#ffffff" stroke-linecap="round" stroke-width="1.5" x1="200" x2="326" y1="200" y2="110"></line>
+                    </g>
+                    
+                    <!-- Center Needle Hub -->
+                    <circle cx="200" cy="200" fill="#1c212b" stroke="#7C4DFF" stroke-width="3" r="16"></circle>
+                    <circle id="stitch-needle-hub-center" cx="200" cy="200" fill="#FF3D57" r="8"></circle>
+                    <circle cx="200" cy="200" fill="#ffffff" r="3.5"></circle>
+                  </svg>
+
                   <div class="gauge-center-readout">
                     <span id="gauge-digital-value" class="gauge-digital-kwh over-budget">864,000</span>
-                    <span class="gauge-sublabel">CONSUMO ACUMULADO MES</span>
+                    <span class="gauge-sublabel">CONSUMO ACUMULADO (HASTA LA FECHA)</span>
                   </div>
                 </div>
                 <div id="gauge-alert-pill" class="gauge-alert-pill danger">
@@ -813,14 +971,22 @@
 
               <!-- Calibration & Range Breakdown Panel -->
               <div class="calibration-panel">
-                <span class="calibration-title">Desglose de Calibración & Rango</span>
+                <span class="calibration-title">Calibración y rango operativo</span>
 
                 <div class="calibration-item">
                   <div class="calibration-row-top">
-                    <span class="cal-name">Promedio Meses Anteriores</span>
+                    <span class="cal-name">Límite presupuestario</span>
                     <span id="cal-promedio-val" class="cal-val">780,000 kWh</span>
                   </div>
-                  <span class="cal-sub">Límite de seguridad operacional Nominal</span>
+                  <span class="cal-sub">Umbral operativo del período</span>
+                </div>
+
+                <div class="calibration-item">
+                  <div class="calibration-row-top">
+                    <span class="cal-name">Corte anterior</span>
+                    <span id="cal-previous-val" class="cal-val">812,000 kWh</span>
+                  </div>
+                  <span id="cal-previous-sub" class="cal-sub red">Consumo actual: +6.4%</span>
                 </div>
 
                 <div class="calibration-item">
@@ -836,7 +1002,7 @@
                     <span class="cal-name">Capacidad Máxima Contratada</span>
                     <span id="cal-capacidad-val" class="cal-val">950,000 kWh</span>
                   </div>
-                  <span class="cal-sub">Tope penalización CFE / Red: Restante 86,000 kWh</span>
+                  <span id="cal-capacidad-sub" class="cal-sub">Margen contratado: 86,000 kWh</span>
                 </div>
 
                 <div class="dial-status-bar">
@@ -867,7 +1033,7 @@
               </div>
 
               <p id="diag-body-text" class="diagnostic-body-text">
-                Energy Intensity exceeds budget by 8.6% (Actual: 4.32 kWh/u vs Target: 3.98 kWh/u). Gas intensity spike detected on day 18 in Smelting Furnaces battery lead-melting line. Telemetry source: Modbus TCP Gateway #03-RC.
+                La demanda total supera el presupuesto en 10.8%; la intensidad unitaria está 8.5% sobre la meta (4.32 vs 3.98 kWh/u). Se detectó un pico térmico en los hornos de fundición.
               </p>
 
               <div class="diagnostic-meta-strip">
@@ -897,6 +1063,101 @@
   </main>
 
   <!-- ========================================================================
+       VIEW 3: DATA SOURCES & LINEAGE
+       ======================================================================== -->
+  <main id="view-sources" class="view-container">
+    <div class="sources-content">
+      <section class="sources-hero">
+        <div>
+          <span class="hero-tagline">GOBIERNO DEL DATO • AUDITORÍA • TRAZABILIDAD</span>
+          <h1 class="hero-heading">Fuentes y trazabilidad de datos</h1>
+          <p class="hero-subtext">Consulta el origen de cada lectura, abre los archivos disponibles y valida el recorrido desde la telemetría hasta los KPIs del dashboard.</p>
+        </div>
+        <button id="btn-sources-add-plant" class="btn-primary-purple" type="button">＋ Registrar nueva planta</button>
+      </section>
+
+      <section class="sources-summary-grid" aria-label="Resumen de fuentes">
+        <article class="source-summary-card">
+          <span class="source-summary-label">Fuentes registradas</span>
+          <strong id="source-count-total">2</strong>
+          <span>Archivos y conexiones conocidas</span>
+        </article>
+        <article class="source-summary-card success">
+          <span class="source-summary-label">Fuentes validadas</span>
+          <strong id="source-count-validated">2</strong>
+          <span>Esquema compatible con los KPIs</span>
+        </article>
+        <article class="source-summary-card">
+          <span class="source-summary-label">Período visible</span>
+          <strong id="source-current-period">SEP 2024</strong>
+          <span>Sincronizado con el filtro global</span>
+        </article>
+        <article class="source-summary-card">
+          <span class="source-summary-label">Última actualización</span>
+          <strong id="source-last-update">Datos base</strong>
+          <span>Se actualiza con cada importación</span>
+        </article>
+      </section>
+
+      <section class="lineage-card" aria-label="Flujo de transformación de datos">
+        <div class="section-heading-row">
+          <div>
+            <span class="source-section-kicker">DATA LINEAGE</span>
+            <h2>Del archivo de origen a la decisión</h2>
+          </div>
+          <span class="lineage-badge">ISO 50001 • CONTROLADO</span>
+        </div>
+        <div class="lineage-flow">
+          <div class="lineage-step"><span>01</span><strong>Archivo origen</strong><small>CSV, XLSX o DAT</small></div>
+          <div class="lineage-arrow">→</div>
+          <div class="lineage-step"><span>02</span><strong>Validación</strong><small>Planta, consumo y presupuesto</small></div>
+          <div class="lineage-arrow">→</div>
+          <div class="lineage-step"><span>03</span><strong>Transformación</strong><small>Costo, ratio y desviación</small></div>
+          <div class="lineage-arrow">→</div>
+          <div class="lineage-step"><span>04</span><strong>Visualización</strong><small>KPIs y alertas accionables</small></div>
+        </div>
+      </section>
+
+      <section class="sources-registry-card">
+        <div class="section-heading-row">
+          <div>
+            <span class="source-section-kicker">REGISTRO DE ORÍGENES</span>
+            <h2>Inventario de fuentes</h2>
+          </div>
+          <span class="registry-help">Selecciona “Vista previa” para revisar el contenido sin salir del dashboard.</span>
+        </div>
+        <div class="sources-table-wrap">
+          <table class="sources-table">
+            <thead>
+              <tr>
+                <th>Fuente</th>
+                <th>Alcance</th>
+                <th>Formato</th>
+                <th>Período / carga</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="sources-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="source-preview-card" class="source-preview-card" aria-live="polite">
+        <div class="section-heading-row">
+          <div>
+            <span class="source-section-kicker">VISTA PREVIA</span>
+            <h2 id="source-preview-title">Selecciona una fuente</h2>
+          </div>
+          <span id="source-preview-meta" class="registry-help">Se mostrarán hasta 12 registros.</span>
+        </div>
+        <div id="source-preview-empty" class="source-preview-empty">El contenido del archivo aparecerá aquí para facilitar su validación.</div>
+        <pre id="source-preview-content" class="source-preview-content" hidden></pre>
+      </section>
+    </div>
+  </main>
+
+  <!-- ========================================================================
        FOOTER
        ======================================================================== -->
   <footer class="scada-footer">
@@ -917,8 +1178,192 @@
 </div>
 
 <!-- ========================================================================
+     MOBILE / TABLET NAVIGATION DRAWER
+     ======================================================================== -->
+<div id="mobile-drawer-backdrop" class="drawer-backdrop" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="mobile-drawer">
+    <div class="drawer-header">
+      <div class="brand-section">
+        <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Brandmark" class="brand-clarios-logo-img">
+        <div class="brand-title-wrap">
+          <div class="brand-name">
+            CLARIOS <span class="brand-badge">SCADA</span>
+          </div>
+          <div class="brand-subtitle">MOBILE CONSOLE</div>
+        </div>
+      </div>
+      <button id="btn-close-drawer" class="btn-close-drawer" type="button" aria-label="Cerrar Menú">&times;</button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Section 1: Selector de Vistas y Plantas -->
+      <div class="drawer-section">
+        <span class="drawer-section-title">Navegación de Plantas</span>
+        <div class="drawer-nav-list">
+          <button class="drawer-nav-btn active" data-nav-target="landing" type="button">
+            <span class="tab-dot" style="background:var(--neon-green)"></span>
+            <span>Vista General (Multi-Planta)</span>
+          </button>
+          <button class="drawer-nav-btn" data-nav-target="sources" type="button">
+            <span class="tab-dot" style="background:var(--cyan-telemetry)"></span>
+            <span>Fuentes y trazabilidad</span>
+          </button>
+          <button class="drawer-nav-btn" data-nav-target="plant" data-plant-id="ensamble" type="button">
+            <span class="tab-dot" style="background:var(--neon-green)"></span>
+            <span>1. Ensamble & OREC</span>
+          </button>
+          <button class="drawer-nav-btn" data-nav-target="plant" data-plant-id="fa" type="button">
+            <span class="tab-dot" style="background:var(--neon-green)"></span>
+            <span>2. F&A (Formación)</span>
+          </button>
+          <button class="drawer-nav-btn danger" data-nav-target="plant" data-plant-id="rc_energy" type="button">
+            <span class="tab-dot" style="background:var(--fire-red)"></span>
+            <span>3. RC Energy & Gas (Alerta)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Section 2: Filtro de Período -->
+      <div class="drawer-section">
+        <span class="drawer-section-title">Período Operativo</span>
+        <div class="drawer-filter-row">
+          <select id="drawer-select-month" class="scada-select" title="Mes Operativo">
+            <option value="0">Enero</option>
+            <option value="1">Febrero</option>
+            <option value="2">Marzo</option>
+            <option value="3">Abril</option>
+            <option value="4">Mayo</option>
+            <option value="5">Junio</option>
+            <option value="6">Julio</option>
+            <option value="7">Agosto</option>
+            <option value="8" selected>Septiembre</option>
+            <option value="9">Octubre</option>
+            <option value="10">Noviembre</option>
+            <option value="11">Diciembre</option>
+          </select>
+          <select id="drawer-select-year" class="scada-select" title="Año Operativo">
+            <option value="2023">2023</option>
+            <option value="2024" selected>2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Section 3: Acciones Rápidas -->
+      <div class="drawer-section">
+        <span class="drawer-section-title">Acciones de Operación</span>
+        <button id="drawer-btn-add-plant" class="drawer-action-btn" type="button">
+          ＋ Registrar nueva planta
+        </button>
+        <button id="drawer-btn-setpoint" class="drawer-action-btn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="21" x2="4" y2="14"/>
+            <line x1="4" y1="10" x2="4" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12" y2="3"/>
+            <line x1="20" y1="21" x2="20" y2="16"/>
+            <line x1="20" y1="12" x2="20" y2="3"/>
+          </svg>
+          Ajustar Setpoint Quemadores
+        </button>
+        <button id="drawer-btn-report" class="drawer-action-btn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar Informe Consolidado
+        </button>
+        <button id="drawer-btn-csv" class="drawer-action-btn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+          </svg>
+          Descargar Logs SCADA (.CSV)
+        </button>
+      </div>
+
+      <!-- Section 4: Telemetría de Nodo y Certificación -->
+      <div class="drawer-status-card">
+        <div class="drawer-status-node">NODO: MONTERREY RC-01</div>
+        <div class="drawer-status-sync">● CONEXIÓN MODBUS ACTIVA (12ms)</div>
+        <div class="drawer-status-iso">Validación ISO 50001 Certificada</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================
      MODALS: SETPOINT CONTROLLER & SCADA INSPECTOR
      ======================================================================== -->
+
+<!-- Modal: Registrar nueva planta -->
+<div id="modal-add-plant" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-plant-title">
+  <div class="modal-dialog modal-dialog-wide">
+    <form id="form-add-plant">
+      <div class="modal-header">
+        <h3 id="modal-add-plant-title" class="modal-title">
+          <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios" class="modal-brand-logo">
+          Registrar fábrica en la red SCADA
+        </h3>
+        <button id="btn-close-add-plant" class="modal-close-btn" type="button" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="form-intro">La nueva fábrica tendrá una tarjeta propia y reutilizará automáticamente la vista completa de detalle. Sus KPIs se compararán contra el corte anterior ingresado.</p>
+        <div class="plant-form-grid">
+          <label class="form-field form-field-wide">
+            <span>Nombre de la planta *</span>
+            <input id="plant-name-input" name="plantName" type="text" maxlength="60" placeholder="Ej. Planta Guadalajara AGM" required>
+          </label>
+          <label class="form-field">
+            <span>Código / módulo *</span>
+            <input id="plant-tag-input" name="plantTag" type="text" maxlength="24" placeholder="MOD-04-GDL" required>
+          </label>
+          <label class="form-field">
+            <span>Nodo SCADA</span>
+            <input id="plant-node-input" name="plantNode" type="text" maxlength="32" placeholder="NODE-GDL-AGM-01">
+          </label>
+          <label class="form-field">
+            <span>Consumo actual (kWh) *</span>
+            <input id="plant-kwh-input" name="currentKwh" type="number" min="1" step="1" placeholder="720000" required>
+          </label>
+          <label class="form-field">
+            <span>Corte anterior (kWh) *</span>
+            <input id="plant-previous-kwh-input" name="previousKwh" type="number" min="1" step="1" placeholder="745000" required>
+          </label>
+          <label class="form-field">
+            <span>Presupuesto (kWh) *</span>
+            <input id="plant-budget-input" name="budgetKwh" type="number" min="1" step="1" placeholder="760000" required>
+          </label>
+          <label class="form-field">
+            <span>Capacidad máxima (kWh) *</span>
+            <input id="plant-capacity-input" name="maxCapacityKwh" type="number" min="1" step="1" placeholder="900000" required>
+          </label>
+          <label class="form-field">
+            <span>Unidades producidas *</span>
+            <input id="plant-production-input" name="productionUnits" type="number" min="1" step="1" placeholder="200000" required>
+          </label>
+          <label class="form-field">
+            <span>Sensores conectados</span>
+            <input id="plant-sensors-input" name="sensorsCount" type="number" min="0" step="1" value="24">
+          </label>
+          <label class="form-field form-field-wide">
+            <span>Link del Excel o fuente (opcional)</span>
+            <input id="plant-source-input" name="sourceUrl" type="url" maxlength="300" placeholder="https://.../telemetria-planta.xlsx">
+            <small>El vínculo aparecerá en Fuentes de Datos para consulta y auditoría.</small>
+          </label>
+        </div>
+        <div id="add-plant-form-error" class="form-error" role="alert" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-add-plant" class="btn-ghost-sm" type="button">Cancelar</button>
+        <button class="btn-primary-purple" type="submit">Crear vista de planta</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Modal 1: Ajustar Setpoint Quemadores -->
 <div id="modal-setpoint" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-setpoint-title">
@@ -1016,7 +1461,7 @@
       </table>
     </div>
     <div class="modal-footer">
-      <button id="btn-close-inspect" class="btn-ghost-sm" type="button">Cerrar Inspector</button>
+      <button id="btn-close-inspect-footer" class="btn-ghost-sm" type="button">Cerrar Inspector</button>
     </div>
   </div>
 </div>
@@ -1024,7 +1469,7 @@
 <!-- Toast Container -->
 <div id="toast-container" class="toast-container"></div>
 
-<!-- Core Application Script -->
+<!-- Core Application Script -->
 
 </body>
 </html>
