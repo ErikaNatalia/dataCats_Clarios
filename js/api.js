@@ -1,5 +1,5 @@
 /**
- * Cliente del backend local (FastAPI, carpeta ../api del proyecto).
+ * Cliente del backend local (FastAPI, carpeta backend/api del repo).
  *
  * Todas las rutas empiezan por /api; en desarrollo Vite las reenvía al puerto 8000
  * (ver vite.config.js). Los datos del pipeline se leen de /api/datos/<archivo>.json.
