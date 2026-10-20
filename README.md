@@ -2,7 +2,7 @@
 
 Dashboard industrial para monitorear el consumo energético, costos, producción, alertas y trazabilidad de datos de las plantas de baterías Clarios.
 
-La aplicación incluye una vista ejecutiva multi-planta, una vista reutilizable de detalle por fábrica, registro dinámico de nuevas plantas y un módulo de fuentes de datos.
+La aplicación incluye una vista ejecutiva multi-planta, una vista reutilizable de detalle por fábrica y un módulo de fuentes de datos. Todos los datos salen del pipeline del backend.
 
 ## Funcionalidades principales
 
@@ -12,15 +12,11 @@ La aplicación incluye una vista ejecutiva multi-planta, una vista reutilizable 
 - Tarjetas de plantas con consumo, costo en COP, intensidad, desviación y alertas.
 - Vista de detalle reutilizable para cualquier planta registrada.
 - Velocímetro dinámico de demanda eléctrica con rangos operativos.
-- Gráficas de consumo diario, procesos y gas.
-- Registro de nuevas fábricas con solo nombre y archivo XLSX, XLS, CSV o JSON.
-- Persistencia local de plantas personalizadas mediante `localStorage`.
-- Eliminación de plantas personalizadas protegida por un código temporal generado al solicitar la eliminación.
+- Gráficas de consumo mensual (real vs esperado) y consumo por proceso.
 - Inventario y trazabilidad de fuentes de datos.
-- Vista previa y descarga de archivos CSV.
-- Carga de telemetría CSV y DAT desde la parte superior de Fuentes de datos.
-- Lectura local de Excel con detección de períodos, procesos y métricas energéticas.
-- Filtros de mes y año conectados a los cortes reales del JSON de F&A.
+- Vista previa y descarga de los JSON generados.
+- Carga del Excel fuente desde Fuentes de datos: validación, revisión de cambios y recálculo del pipeline.
+- Filtros de mes y año conectados a los cortes reales de cada planta.
 - Análisis automatizado y explicable para cada planta, con hallazgos, prioridad y decisiones sugeridas.
 - Informe PDF descargable generado localmente desde el análisis de cada planta.
 - Menú hamburguesa visible en escritorio, tablet y móvil, con navegación, filtros y acciones de las plantas.
@@ -34,15 +30,14 @@ Presenta el estado consolidado de la operación, comparaciones históricas, lect
 
 ### Detalle de planta
 
-La misma vista se reutiliza para Ensamble & OREC, F&A, RC Energía y Gas y cualquier planta creada posteriormente. Incluye:
+La misma vista se reutiliza para cada serie del pipeline (Ensamble, OREC, F&A, RC Energía, RC Gas y cualquier hoja nueva del Excel). Incluye:
 
 - Consumo y costo.
 - Comparación contra el corte anterior.
 - Desviación presupuestaria.
 - Intensidad energética por unidad.
-- Producción y estado SCADA.
-- Procesos de mayor consumo.
-- Monitor de gas.
+- Producción y estado analítico (procesos con alerta).
+- Consumo por proceso (se oculta en plantas de un solo proceso).
 - Velocímetro y diagnóstico operativo.
 - Análisis inteligente explicable e informe PDF por planta.
 
@@ -50,7 +45,7 @@ La misma vista se reutiliza para Ensamble & OREC, F&A, RC Energía y Gas y cualq
 
 Muestra el recorrido de la información desde el archivo de origen hasta los KPIs, junto con:
 
-- Carga masiva de telemetría, situada antes del resumen y del inventario de documentos.
+- Carga del Excel fuente e historial de cargas.
 - Inventario de fuentes.
 - Alcance y formato.
 - Estado de validación.
@@ -129,9 +124,8 @@ El comando inicia la API y Vite, y abre el dashboard en el navegador. Si los pue
 están ocupados por esta misma aplicación, reutiliza la API existente y Vite selecciona otro puerto
 disponible (por ejemplo, 3001). Para detener los servicios, pulsa `Ctrl+C` en esa terminal.
 
-En **Vista General** y **Fuentes de datos** está disponible **Registrar nueva planta**. Las plantas
-creadas desde ese formulario se guardan en el navegador actual y se pueden eliminar después; son
-adicionales a las series del pipeline.
+El dashboard necesita la API: si no responde, muestra una pantalla "Backend no disponible" con un
+botón **Reintentar** (no hay datos de demostración).
 
 `npm.cmd run dev` sigue disponible para ejecutar solamente el front; no inicia la API.
 
@@ -156,85 +150,29 @@ Para probar esa versión:
 npm.cmd run preview
 ```
 
-## Formato de telemetría
+## Datos del dashboard
 
-Los archivos CSV deben incluir como mínimo:
+Todas las plantas salen de los JSON que genera el pipeline (`backend/output/`), servidos por la API en
+`/api/datos/`: `index.json` lista las series y cada serie tiene su archivo (`ensamble.json`,
+`rc-gas.json`, …). El dashboard valida que cada archivo tenga `id`, `procesos`, una serie total y al
+menos dos cortes. Los selectores de período solo ofrecen los meses disponibles: en la vista general,
+los meses que tienen todas las plantas; dentro de una planta, los de esa planta.
 
-```csv
-Planta,Consumo_kWh,Presupuesto_kWh,Unidades
-ensamble,684000,700000,200000
-fa,1260000,1300000,207200
-rc_energy,864000,780000,200000
-```
+Si el backend responde pero aún no hay JSON generados, el dashboard pide cargar el Excel fuente.
 
-La columna `Planta` debe corresponder al identificador interno de la fábrica.
+## Agregar una planta
 
-Este formato corresponde al cargador masivo heredado. Para crear una fábrica nueva se usa el formulario **Registrar nueva planta**, que analiza el archivo mensual y crea la vista completa automáticamente.
-
-## Dataset JSON mensual de F&A
-
-El ejemplo procesado desde Excel se incorporó con el nombre:
-
-```text
-data/planta_fya_energia.json
-```
-
-La convención usada es `planta_<id>_<servicio>.json`. El identificador declarado por el archivo es `fya`; en la interfaz se adapta a la clave histórica `fa` de la planta F&A.
-
-Vite referencia el archivo como un recurso del proyecto y conserva su URL correcta en desarrollo y producción:
-
-```js
-const FYA_DATA_URL = new URL('../data/planta_fya_energia.json', import.meta.url).href;
-const response = await fetch(FYA_DATA_URL);
-const dataset = await response.json();
-```
-
-El dashboard valida que existan `id`, `procesos`, una serie total y al menos dos cortes. Los selectores de período se llenan exclusivamente con los meses y años disponibles en la planta analítica que se está consultando. Al cambiar el corte se recalculan KPIs, comparaciones, alertas y gráficas frente al mes anterior real. En la vista general el filtro conserva el alcance de F&A; dentro de una planta creada desde archivo pasa a controlar esa planta. El archivo también aparece en **Fuentes de Datos**, donde se puede previsualizar y descargar.
-
-Campos aprovechados en la nueva vista estratégica:
-
-- Consumo, producción e intensidad mensual.
-- Intensidad presupuestada y desviación frente al presupuesto.
-- Rango estadístico esperado, límites, estado y puntaje z.
-- Costo unitario y costo total interpretados y presentados en pesos colombianos (COP).
-- Comparación por proceso: F&A total, Formación y Línea Acabado Principal.
-- Alertas del último corte.
-- Cobertura histórica, períodos excluidos, calidad y estacionalidad.
-
-Los campos nulos se muestran como no disponibles; no se rellenan con cero. El JSON tampoco se interpreta como fuente de gas, sensores, emisiones, datos horarios o capacidad contratada.
-
-## Crear y eliminar una planta
-
-En **Registrar nueva planta** solo se solicita:
-
-1. Nombre de la planta.
-2. Archivo `.xlsx`, `.xls`, `.csv` o `.json` de hasta 15 MB.
-
-Para hojas tabulares, el lector reconoce encabezados equivalentes a fecha/período, proceso, consumo, producción, intensidad, presupuesto, costo y rangos. Debe haber al menos dos cortes mensuales comparables. Si no existe una fila total, se construye el consolidado a partir de los procesos detectados.
-
-El selector muestra claramente el nombre, formato y tamaño del archivo elegido. Antes de crear la planta se puede **Cambiar** o **Quitar** el archivo sin cerrar el formulario; también admite arrastrar y soltar.
-
-Después de la validación, se genera la tarjeta, la vista de detalle, los filtros de mes y año, las comparaciones mensuales y el registro en **Fuentes de Datos**. El archivo se procesa localmente y no se envía a un servidor.
-
-El código no se crea ni se guarda al registrar la planta. Al pulsar **Eliminar planta registrada**, el dashboard genera un código temporal con formato `CL-XXXX-XXXX`, lo muestra dentro del diálogo y exige copiarlo o escribirlo exactamente para habilitar la eliminación. Al cancelar o cerrar el diálogo, el código vence. Las tres plantas base no pueden eliminarse desde esta acción.
+Una planta nueva es una hoja nueva en el Excel fuente. Descarga la plantilla en **Fuentes de datos →
+Descargar plantilla Excel**, agrega la hoja con el mismo formato y vuelve a cargar el Excel con
+**Cargar datos fuente**: el pipeline la detecta y regenera todos los JSON (indicadores, alertas y
+pronósticos).
 
 ## Controles operativos y evidencia del dato
 
-- **Ver datos del corte:** es la única acción del diagnóstico. Muestra los registros del período activo tomados del archivo fuente, desglosados por proceso, con consumo, intensidad, rango histórico y sobrepresupuesto. Los valores bajos, inactivos o sin historia no se presentan como alertas de intensidad alta. En plantas sin historial importado se identifica el snapshot demostrativo.
+- **Ver datos del corte:** es la única acción del diagnóstico. Muestra los registros del período activo tomados del archivo fuente, desglosados por proceso, con consumo, intensidad, rango histórico y sobrepresupuesto. Los valores bajos, inactivos o sin historia no se presentan como alertas de intensidad alta.
 - Se retiró **Ver cálculo del corte / Revisar señales del corte** porque abría exactamente la misma tabla.
 - Se retiró **Simular punto de ajuste térmico**: asignaba un consumo fijo al cruzar un umbral de temperatura, sin un modelo validado con los datos de la planta.
 - El informe distingue señales de procesos afectados y limita la historia al corte seleccionado. Describe el alcance de los datos sin atribuir una confianza estadística no calculada. La ausencia de meta e historia válida se identifica como evaluación limitada.
-
-## Persistencia
-
-Las plantas creadas desde la interfaz se guardan en el navegador bajo la clave:
-
-```text
-clarios.customPlants.v1
-```
-
-Esta persistencia es local al dispositivo y al navegador. No reemplaza una base de datos compartida.
-Los metadatos y la serie normalizada se restauran al recargar; por seguridad y tamaño, el archivo binario original solo puede descargarse durante la sesión en la que se importó.
 
 ## Documentación de la entrega
 

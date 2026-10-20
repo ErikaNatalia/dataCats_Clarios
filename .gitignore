@@ -2,6 +2,7 @@ node_modules/
 npm-debug.log*
 /output/
 __pycache__/
+.venv/
 
 # Backend: datos crudos de Clarios y archivos de trabajo (no se publican)
 backend/Base de datos.xlsx

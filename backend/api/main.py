@@ -11,6 +11,8 @@ Rutas:
   POST /api/fuentes/validar            sube un Excel (campo `archivo`): validación + cambios; deja un token
   POST /api/fuentes/{token}/aplicar    reemplaza el Excel y corre el pipeline (job en segundo plano)
   GET  /api/jobs/actual | /{id}        estado del job (fase, log, error)
+  GET  /api/umbrales                   umbral de alerta por planta ({"defecto": 0.1, "umbrales": {...}})
+  PUT  /api/umbrales                   reemplaza los umbrales ({"umbrales": {"orec": 0.15, ...}})
   GET  /api/datos/<archivo>            JSON generados (index.json, <serie>.json, monitoreo.json, historial/...)
 """
 import logging
@@ -20,9 +22,10 @@ from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from pipeline import config, ingest, plantilla
-from . import fuentes
+from . import fuentes, umbrales
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 
@@ -95,6 +98,23 @@ def job_por_id(job_id: str):
         return fuentes.job(job_id)
     except KeyError:
         raise HTTPException(404, "job no encontrado")
+
+
+class Umbrales(BaseModel):
+    umbrales: dict[str, float]
+
+
+@app.get("/api/umbrales")
+def leer_umbrales():
+    return {"defecto": umbrales.DEFECTO, "umbrales": umbrales.leer()}
+
+
+@app.put("/api/umbrales")
+def guardar_umbrales(cuerpo: Umbrales):
+    try:
+        return {"defecto": umbrales.DEFECTO, "umbrales": umbrales.guardar(cuerpo.umbrales)}
+    except ValueError as e:
+        raise HTTPException(422, str(e))
 
 
 app.mount("/api/datos", StaticFiles(directory=config.OUTPUT_DIR, check_dir=False), name="datos")

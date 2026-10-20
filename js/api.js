@@ -66,6 +66,20 @@ export function aplicarFuente(token) {
   return request('/fuentes/' + encodeURIComponent(token) + '/aplicar', { method: 'POST' });
 }
 
+/** Umbral de alerta por planta: { defecto: 0.1, umbrales: { <serie>: fracción } }. */
+export function umbrales() {
+  return request('/umbrales');
+}
+
+/** Reemplaza todos los umbrales guardados en el backend. */
+export function guardarUmbrales(umbralesPorSerie) {
+  return request('/umbrales', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ umbrales: umbralesPorSerie })
+  });
+}
+
 export function jobActual() {
   return request('/jobs/actual');
 }
