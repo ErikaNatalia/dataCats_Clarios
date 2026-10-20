@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,8 +14,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
+  <script src="/theme-init.js"></script>
+
   <!-- Core Styles -->
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/appearance.css">
 </head>
 <body>
 
@@ -95,8 +98,17 @@
         <span class="btn-text-responsive">Análisis e informe</span>
       </button>
 
+      <button id="btn-theme-toggle" class="theme-switch" type="button" role="switch" aria-checked="true" aria-label="Tema oscuro" title="Cambiar a tema claro">
+        <span class="theme-switch-track" aria-hidden="true">
+          <svg class="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+          <svg class="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg>
+          <span class="theme-switch-thumb"></span>
+        </span>
+        <span class="theme-switch-label">Oscuro</span>
+      </button>
+
       <!-- Hamburger Menu Button for Tablet & Mobile -->
-      <button id="btn-mobile-menu-toggle" class="btn-hamburger" type="button" aria-label="Abrir Menú de Navegación" title="Menú">
+      <button id="btn-mobile-menu-toggle" class="btn-hamburger" type="button" aria-label="Abrir menú de navegación" aria-controls="mobile-drawer-backdrop" aria-expanded="false" title="Menú">
         <span class="hamburger-bar"></span>
         <span class="hamburger-bar"></span>
         <span class="hamburger-bar"></span>
@@ -123,7 +135,7 @@
   <!-- ========================================================================
        VIEW 1: LANDING / GLOBAL MULTI-PLANT VIEW (VISTA GENERAL)
        ======================================================================== -->
-  <main id="view-landing" class="view-container active-view">
+  <main id="view-landing" class="view-container active-view" tabindex="-1">
     <div class="landing-content">
 
       <!-- Hero Header -->
@@ -283,7 +295,7 @@
         <!-- Futuristic Electric Vehicle Skateboard Blueprint Vector Background -->
         <svg class="blueprint-background-svg" viewBox="0 0 1400 650" preserveAspectRatio="none">
           <!-- EV Chassis Silhouette Blueprint Lines -->
-          <path d="M 120 180 C 240 100, 480 80, 700 80 C 920 80, 1160 100, 1280 180 C 1340 240, 1360 400, 1280 480 C 1160 560, 920 580, 700 580 C 480 580, 240 560, 120 480 C 60 400, 60 240, 120 180 Z" 
+          <path d="M 120 180 C 240 100, 480 80, 700 80 C 920 80, 1160 100, 1280 180 C 1340 240, 1360 400, 1280 480 C 1160 560, 920 580, 700 580 C 480 580, 240 560, 120 480 C 60 400, 60 240, 120 180 Z"
                 fill="none" stroke="rgba(0, 229, 255, 0.15)" stroke-width="1.8" stroke-dasharray="6 4"/>
           <!-- Wheel Well Axles -->
           <circle cx="280" cy="120" r="48" fill="none" stroke="rgba(124, 77, 255, 0.2)" stroke-width="2"/>
@@ -527,78 +539,7 @@
         </div>
       </section>
 
-      <!-- ====================================================================
-           MASS TELEMETRY DATA UPLOAD WIDGET (.XLSX, .CSV, .DAT)
-           ==================================================================== -->
-      <section class="upload-widget-card">
-        <div class="upload-widget-header">
-          <div class="upload-title-wrap">
-            <svg class="upload-title-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            <h2 class="upload-title">Carga masiva de telemetría • Entrada de datos</h2>
-          </div>
-          <span class="upload-formats-badge">FORMATOS: .XLSX, .CSV, .DAT (VOLCADO MODBUS)</span>
-        </div>
 
-        <!-- Drag & Drop Zone -->
-        <div id="telemetry-dropzone" class="dropzone-container" tabindex="0" role="button" aria-label="Zona de arrastre de archivos para telemetría">
-          <input type="file" id="file-upload-input" accept=".csv, .xlsx, .dat" style="display: none;">
-          
-          <div class="dropzone-icon-circle">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
-              <path d="M12 12v9"/>
-              <path d="m16 16-4-4-4 4"/>
-            </svg>
-          </div>
-
-          <div class="dropzone-text-primary">
-            Arrastra y suelta tu archivo de telemetría aquí, o <span>haz click para examinar</span>
-          </div>
-
-          <p class="dropzone-text-secondary">
-            Sincroniza lecturas horarias de medidores de gas, subestaciones eléctricas principales de Planta RC, y curvas de producción de acumuladores.
-          </p>
-
-          <div class="dropzone-trust-row">
-            <div class="dropzone-trust-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              <span>Validación automática ISO 50001</span>
-            </div>
-            <div class="dropzone-trust-item">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-              <span>Conexión Cifrada SCADA</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Upload Demo & Template Actions -->
-        <div class="upload-quick-actions">
-          <button id="btn-load-demo-data" class="btn-ghost-sm" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-            </svg>
-            Cargar Datos de Muestra
-          </button>
-          <button id="btn-download-template" class="btn-ghost-sm" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <line x1="9" y1="15" x2="15" y2="15"/>
-            </svg>
-            Descargar Plantilla Excel (.CSV)
-          </button>
-        </div>
-      </section>
 
     </div>
   </main>
@@ -606,7 +547,7 @@
   <!-- ========================================================================
        VIEW 2, 3, 4: PLANT DETAIL VIEW (30% SIDEBAR + 70% MAIN CONTENT)
        ======================================================================== -->
-  <main id="view-detail" class="view-container">
+  <main id="view-detail" class="view-container" tabindex="-1">
     <div class="plant-detail-layout">
 
       <!-- --------------------------------------------------------------------
@@ -694,20 +635,6 @@
           <button id="btn-open-intelligent-analysis" class="sidebar-action-btn intelligent-action" type="button">
             <span aria-hidden="true">✦</span>
             Análisis inteligente e informe
-          </button>
-          <button id="btn-open-setpoint-modal" class="sidebar-action-btn" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="4" y1="21" x2="4" y2="14"/>
-              <line x1="4" y1="10" x2="4" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="12"/>
-              <line x1="12" y1="8" x2="12" y2="3"/>
-              <line x1="20" y1="21" x2="20" y2="16"/>
-              <line x1="20" y1="12" x2="20" y2="3"/>
-              <line x1="1" y1="14" x2="7" y2="14"/>
-              <line x1="9" y1="8" x2="15" y2="8"/>
-              <line x1="17" y1="16" x2="23" y2="16"/>
-            </svg>
-            Simular punto de ajuste térmico (RC)
           </button>
 
           <button id="btn-download-scada-csv" class="sidebar-action-btn" type="button">
@@ -1054,32 +981,32 @@
                     <!-- Radial Tick Marks -->
                     <line id="gauge-tick-line-0" stroke="rgba(255,255,255,0.4)" stroke-width="2" x1="40" x2="56" y1="200" y2="200"></line>
                     <text id="gauge-tick-0" font-size="10" fill="#A2A9B8" text-anchor="middle" x="45" y="218" font-family="var(--font-mono)">0</text>
-                    
+
                     <line id="gauge-tick-line-20" stroke="rgba(255,255,255,0.4)" stroke-width="2" x1="72" x2="85" y1="130" y2="137"></line>
                     <text id="gauge-tick-20" font-size="10" fill="#A2A9B8" text-anchor="middle" x="68" y="125" font-family="var(--font-mono)">200k</text>
-                    
+
                     <line id="gauge-tick-line-40" stroke="rgba(255,255,255,0.4)" stroke-width="2" x1="125" x2="135" y1="76" y2="88"></line>
                     <text id="gauge-tick-40" font-size="10" fill="#A2A9B8" text-anchor="middle" x="120" y="68" font-family="var(--font-mono)">400k</text>
-                    
+
                     <line id="gauge-tick-line-60" stroke="rgba(255,255,255,0.4)" stroke-width="2" x1="200" x2="200" y1="42" y2="58"></line>
                     <text id="gauge-tick-60" font-size="10" fill="#A2A9B8" text-anchor="middle" x="200" y="32" font-family="var(--font-mono)">600k</text>
-                    
+
                     <!-- Dynamic operational budget marker -->
                     <line id="stitch-gauge-budget-tick" stroke="#FFAB00" stroke-width="4" x1="288" x2="276" y1="72" y2="84"></line>
                     <circle id="stitch-gauge-budget-dot" cx="288" cy="72" fill="#FFAB00" r="4"></circle>
                     <text id="stitch-gauge-budget-label" font-size="10" font-weight="bold" fill="#FFAB00" text-anchor="end" x="326" y="96" font-family="var(--font-mono)">META 780k</text>
-                    
+
                     <!-- 1M (MAX FSD) -->
                     <line id="gauge-tick-line-max" stroke="#FF3D57" stroke-width="2" x1="360" x2="344" y1="200" y2="200"></line>
                     <text id="gauge-tick-max" font-size="10" fill="#FF3D57" text-anchor="middle" x="355" y="218" font-family="var(--font-mono)">950k</text>
-                    
+
                     <!-- Dynamic Animated Needle Group (needle points from 200,200 to position) -->
                     <g id="stitch-needle-group" style="transform-origin: 200px 200px; transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);">
                       <line class="stitch-needle-line" data-needle-length="160" stroke="rgba(0,0,0,0.6)" stroke-linecap="round" stroke-width="6" x1="200" x2="330" y1="200" y2="108"></line>
                       <line id="stitch-needle-glow-line" class="stitch-needle-line" data-needle-length="156" filter="url(#redNeonGlow)" stroke="#FF3D57" stroke-linecap="round" stroke-width="4.5" x1="200" x2="326" y1="200" y2="110"></line>
                       <line class="stitch-needle-line" data-needle-length="156" stroke="#ffffff" stroke-linecap="round" stroke-width="1.5" x1="200" x2="326" y1="200" y2="110"></line>
                     </g>
-                    
+
                     <!-- Center Needle Hub -->
                     <circle cx="200" cy="200" fill="#1c212b" stroke="#7C4DFF" stroke-width="3" r="16"></circle>
                     <circle id="stitch-needle-hub-center" cx="200" cy="200" fill="#FF3D57" r="8"></circle>
@@ -1154,24 +1081,21 @@
                 <div class="diagnostic-heading-wrap">
                   <h3 class="diagnostic-title">Diagnóstico energético de la planta</h3>
                   <div class="diagnostic-badge-row">
-                    <span id="diag-trip-badge" class="diagnostic-trip-badge">AVISO CRÍTICO DE OPERACIÓN</span>
+                    <span id="diag-trip-badge" class="diagnostic-trip-badge">CONSULTANDO DATOS DEL CORTE</span>
                   </div>
                 </div>
               </div>
 
               <p id="diag-body-text" class="diagnostic-body-text">
-                La demanda total supera el presupuesto en 10.8%; el desempeño energético está 8.5% sobre la meta (4.32 vs 3.98 kWh/u). Se detectó un pico térmico en los hornos de fundición.
+                El diagnóstico se calcula con la planta y el corte seleccionados.
               </p>
 
               <div id="diagnostic-meta-strip" class="diagnostic-meta-strip">
-                Timestamp: 2024-09-28 14:32:09 CST • Gateway: #03-RC-MODBUS
+                Consulte el corte y el archivo fuente antes de interpretar el resultado.
               </div>
             </div>
 
             <div class="diagnostic-actions-row">
-              <button id="btn-diag-ack" class="btn-diag-ack" type="button">
-                Confirmar alerta local
-              </button>
               <button id="btn-diag-inspect" class="btn-diag-inspect" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -1192,7 +1116,7 @@
   <!-- ========================================================================
        VIEW 3: DATA SOURCES & LINEAGE
        ======================================================================== -->
-  <main id="view-sources" class="view-container">
+  <main id="view-sources" class="view-container" tabindex="-1">
     <div class="sources-content">
       <section class="sources-hero">
         <div>
@@ -1206,6 +1130,81 @@
           <button id="btn-sources-add-plant" class="btn-primary-purple" type="button">＋ Registrar nueva planta</button>
         </div>
       </section>
+
+      <!-- ====================================================================
+           MASS TELEMETRY DATA UPLOAD WIDGET (.XLSX, .CSV, .DAT)
+           ==================================================================== -->
+      <section id="telemetry-upload-card" class="upload-widget-card" aria-labelledby="telemetry-upload-title">
+        <div class="upload-widget-header">
+          <div class="upload-title-wrap">
+            <svg class="upload-title-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <h2 id="telemetry-upload-title" class="upload-title">Carga masiva de telemetría • Entrada de datos</h2>
+          </div>
+          <span class="upload-formats-badge">FORMATOS: .XLSX, .CSV, .DAT (VOLCADO MODBUS)</span>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div id="telemetry-dropzone" class="dropzone-container" tabindex="0" role="button" aria-label="Zona de arrastre de archivos para telemetría">
+          <input type="file" id="file-upload-input" accept=".csv, .xlsx, .dat" style="display: none;">
+
+          <div class="dropzone-icon-circle">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+              <path d="M12 12v9"/>
+              <path d="m16 16-4-4-4 4"/>
+            </svg>
+          </div>
+
+          <div class="dropzone-text-primary">
+            Arrastra y suelta tu archivo de telemetría aquí, o <span>haz click para examinar</span>
+          </div>
+
+          <p class="dropzone-text-secondary">
+            Sincroniza lecturas horarias de medidores de gas, subestaciones eléctricas principales de Planta RC, y curvas de producción de acumuladores.
+          </p>
+
+          <div class="dropzone-trust-row">
+            <div class="dropzone-trust-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span>Validación automática ISO 50001</span>
+            </div>
+            <div class="dropzone-trust-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span>Conexión Cifrada SCADA</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Upload Demo & Template Actions -->
+        <div class="upload-quick-actions">
+          <button id="btn-load-demo-data" class="btn-ghost-sm" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            Cargar Datos de Muestra
+          </button>
+          <button id="btn-download-template" class="btn-ghost-sm" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+            Descargar Plantilla Excel (.CSV)
+          </button>
+        </div>
+      </section>
+
+      <p class="currency-note"><strong>COP</strong> Todos los costos y tarifas se presentan en pesos colombianos, con los valores de los archivos de origen.</p>
 
       <section id="sources-loads-card" class="sources-registry-card" hidden>
         <div class="section-heading-row">
@@ -1334,7 +1333,7 @@
 <!-- ========================================================================
      MOBILE / TABLET NAVIGATION DRAWER
      ======================================================================== -->
-<div id="mobile-drawer-backdrop" class="drawer-backdrop" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+<div id="mobile-drawer-backdrop" class="drawer-backdrop" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true">
   <div class="mobile-drawer">
     <div class="drawer-header">
       <div class="brand-section">
@@ -1343,7 +1342,7 @@
           <div class="brand-name">
             CLARIOS <span class="brand-badge">SCADA</span>
           </div>
-          <div class="brand-subtitle">CONSOLA MÓVIL</div>
+          <div id="drawer-title" class="brand-subtitle">MENÚ DE NAVEGACIÓN</div>
         </div>
       </div>
       <button id="btn-close-drawer" class="btn-close-drawer" type="button" aria-label="Cerrar Menú">&times;</button>
@@ -1352,15 +1351,16 @@
     <div class="drawer-body">
       <!-- Section 1: Selector de Vistas y Plantas -->
       <div class="drawer-section">
-        <span class="drawer-section-title">Navegación de Plantas</span>
+        <span class="drawer-section-title">Navegación</span>
         <div class="drawer-nav-list">
           <button class="drawer-nav-btn active" data-nav-target="landing" type="button">
             <span class="tab-dot" style="background:var(--neon-green)"></span>
             <span>Vista General (Multi-Planta)</span>
           </button>
+          <button class="drawer-nav-btn" data-nav-target="detail" type="button"><span class="tab-dot"></span><span>Detalle de planta</span></button>
           <button class="drawer-nav-btn" data-nav-target="sources" type="button">
             <span class="tab-dot" style="background:var(--cyan-telemetry)"></span>
-            <span>Fuentes y trazabilidad</span>
+            <span>Fuentes de datos</span>
           </button>
           <button class="drawer-nav-btn" data-nav-target="plant" data-plant-id="ensamble" type="button">
             <span class="tab-dot" style="background:var(--neon-green)"></span>
@@ -1409,17 +1409,6 @@
         <span class="drawer-section-title">Acciones de Operación</span>
         <button id="drawer-btn-add-plant" class="drawer-action-btn" type="button">
           ＋ Registrar nueva planta
-        </button>
-        <button id="drawer-btn-setpoint" class="drawer-action-btn" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="4" y1="21" x2="4" y2="14"/>
-            <line x1="4" y1="10" x2="4" y2="3"/>
-            <line x1="12" y1="21" x2="12" y2="12"/>
-            <line x1="12" y1="8" x2="12" y2="3"/>
-            <line x1="20" y1="21" x2="20" y2="16"/>
-            <line x1="20" y1="12" x2="20" y2="3"/>
-          </svg>
-          Simular punto de ajuste térmico (RC)
         </button>
         <button id="drawer-btn-report" class="drawer-action-btn" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1626,42 +1615,7 @@
   </div>
 </div>
 
-<!-- Modal 1: Ajustar Setpoint Quemadores -->
-<div id="modal-setpoint" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-setpoint-title">
-  <div class="modal-dialog">
-    <div class="modal-header">
-      <h3 id="modal-setpoint-title" class="modal-title">
-        <img src="assets/clarios-mark.png" alt="Clarios" class="modal-brand-logo">
-        Simulación del punto de ajuste térmico · RC Energía y Gas
-      </h3>
-      <button id="btn-close-setpoint" class="modal-close-btn" type="button" aria-label="Cerrar modal">&times;</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
-        Esta es una simulación local de la planta RC. No lee ni escribe un PLC, Modbus o sistema SCADA real. Permite observar cómo cambiaría el escenario del tablero si el punto de ajuste térmico se redujera.
-      </p>
-
-      <div class="range-slider-wrap">
-        <div class="range-slider-labels">
-          <span>Temperatura del punto de ajuste:</span>
-          <strong id="slider-val-display" style="color:var(--clarios-purple-light); font-size:14px;">470 °C</strong>
-        </div>
-        <input type="range" id="slider-burner-temp" class="custom-range-input" min="400" max="500" value="470" step="5">
-        <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); font-family:var(--font-mono)">
-          <span>400 °C (Modo Ahorro)</span>
-          <span>430 °C (referencia del escenario)</span>
-          <span>500 °C (Sobreconsumo Crítico)</span>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button id="btn-cancel-setpoint" class="btn-ghost-sm" type="button">Cancelar</button>
-      <button id="btn-apply-setpoint" class="btn-primary-purple" type="button">Aplicar simulación</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal 2: Evidencia del corte -->
+<!-- Modal: Evidencia del corte -->
 <div id="modal-inspect" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-inspect-title">
   <div class="modal-dialog">
     <div class="modal-header">
@@ -1716,7 +1670,7 @@
         </div>
         <div class="analysis-badges">
           <span id="analysis-priority-badge" class="analysis-priority-badge neutral">Prioridad por calcular</span>
-          <span id="analysis-confidence-badge" class="analysis-confidence-badge">Confianza de datos</span>
+          <span id="analysis-confidence-badge" class="analysis-confidence-badge">Alcance del análisis</span>
         </div>
       </section>
 

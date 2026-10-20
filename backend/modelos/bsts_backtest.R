@@ -61,8 +61,11 @@ for (s in SERIES) {
   origins <- seq(inicio, nrow(d) - 1, by = ORIGIN_STEP)
   for (k in origins) jobs[[length(jobs) + 1]] <- list(s = s, d = d, k = k)
 }
-res <- parallel::mclapply(jobs, function(j) run_origin(j$s, j$d, j$k),
-                          mc.cores = max(1, parallel::detectCores() - 2))
+# Windows no admite fork: mclapply solo funciona con un núcleo en ese sistema.
+cores <- parallel::detectCores()
+if (is.na(cores)) cores <- 1L
+cores <- if (.Platform$OS.type == "windows") 1L else max(1L, cores - 2L)
+res <- parallel::mclapply(jobs, function(j) run_origin(j$s, j$d, j$k), mc.cores = cores)
 res <- do.call(rbind, res)
 dir.create(dirname(csv_out), showWarnings = FALSE, recursive = TRUE)
 write.csv(res, csv_out, row.names = FALSE)

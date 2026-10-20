@@ -1,3 +1,4 @@
+import { initTheme } from './theme.js';
 import {
   createSecurityCode,
   deriveAnalyticalAlerts,
@@ -37,7 +38,6 @@ import * as api from './api.js';
     pipeline: { online: false, excel: null, loads: [], runningJobId: null },
     // Corte común de la vista general (modo pipeline): mes que tienen todas las plantas.
     globalPeriod: null,
-    faultAcknowledged: false,
     selectedPeriod: null,
 
     // Global Aggregate Metrics
@@ -360,6 +360,7 @@ import * as api from './api.js';
 
   // --- INITIALIZATION ---
   document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     hydrateCustomPlants();
     ensureDynamicPlantUI();
     initNavigation();
@@ -552,19 +553,13 @@ import * as api from './api.js';
 
   function updateSourcesActions() {
     const online = DashboardStore.pipeline.online;
-    const pipeline = DashboardStore.dataMode === 'pipeline';
     const loadButton = document.getElementById('btn-sources-load-data');
     const templateLink = document.getElementById('link-sources-template');
-    const addPlantButton = document.getElementById('btn-sources-add-plant');
     if (loadButton) {
       loadButton.hidden = !online;
       loadButton.textContent = DashboardStore.pipeline.runningJobId ? '⟳ Carga en curso…' : '⇪ Cargar datos fuente';
     }
     if (templateLink) templateLink.hidden = !online;
-    // Con backend, una planta nueva es una hoja nueva del Excel fuente.
-    if (addPlantButton) addPlantButton.hidden = pipeline;
-    const openAddPlant = document.getElementById('btn-open-add-plant');
-    if (openAddPlant) openAddPlant.hidden = pipeline;
   }
 
   function renderSourceLoads() {
@@ -921,14 +916,25 @@ import * as api from './api.js';
     const openButton = document.getElementById('btn-mobile-menu-toggle');
     const closeButton = document.getElementById('btn-close-drawer');
     if (!backdrop || !openButton || !closeButton) return;
+    const app = document.getElementById('app-container');
+    let previousFocus;
 
-    const closeDrawer = () => {
+    const closeDrawer = (restoreFocus = true) => {
       backdrop.classList.remove('open');
       document.body.classList.remove('drawer-open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      openButton.setAttribute('aria-expanded', 'false');
+      if (app) app.inert = false;
+      if (restoreFocus && previousFocus?.isConnected) previousFocus.focus();
     };
     const openDrawer = () => {
+      previousFocus = document.activeElement;
       backdrop.classList.add('open');
       document.body.classList.add('drawer-open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      openButton.setAttribute('aria-expanded', 'true');
+      if (app) app.inert = true;
+      closeButton.focus();
     };
 
     openButton.addEventListener('click', openDrawer);
@@ -949,6 +955,8 @@ import * as api from './api.js';
           switchView('detail');
         } else if (target === 'sources') {
           switchView('sources');
+        } else if (target === 'detail') {
+          switchView('detail');
         } else {
           switchView('landing');
         }
@@ -960,11 +968,6 @@ import * as api from './api.js';
     if (drawerAddPlant) drawerAddPlant.addEventListener('click', () => {
       closeDrawer();
       openAddPlantModal();
-    });
-    const drawerSetpoint = document.getElementById('drawer-btn-setpoint');
-    if (drawerSetpoint) drawerSetpoint.addEventListener('click', () => {
-      closeDrawer();
-      document.getElementById('btn-open-setpoint-modal')?.click();
     });
     const drawerReport = document.getElementById('drawer-btn-report');
     if (drawerReport) drawerReport.addEventListener('click', () => {
@@ -978,7 +981,20 @@ import * as api from './api.js';
     });
 
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && backdrop.classList.contains('open')) closeDrawer();
+      if (!backdrop.classList.contains('open')) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDrawer();
+      } else if (event.key === 'Tab') {
+        const focusable = [...backdrop.querySelectorAll('button, a[href], select, input, [tabindex="0"]')]
+          .filter(element => !element.disabled && element.getClientRects().length > 0);
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if ((event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first)?.focus();
+        }
+      }
     });
   }
 
@@ -1504,9 +1520,9 @@ import * as api from './api.js';
     return ratio <= 1 + NORMAL_MARGIN ? 'warning' : 'negative';
   }
 
-  /** $1.214 M (millones de pesos, con separador de miles). */
+  /** Millones de COP con un decimal; la abreviación no convierte la moneda. */
   function formatMillionsCop(value) {
-    return '$' + formatNumber(Math.round(Number(value) / 1e6)) + ' M';
+    return '$' + formatDecimal(Number(value) / 1e6, 1) + ' M';
   }
 
   function moreOrLess(changePct) {
@@ -1574,15 +1590,20 @@ import * as api from './api.js';
 
     // 2. Gasto en energía y gas (COP).
     const costRatio = ref.cost && hasNumericValue(g.energyCostCop) ? g.energyCostCop / ref.cost.value : null;
+    const costSeriesCount = current?.costKey ? current.costKey.split(',').length : 0;
+    const totalSeriesCount = getPipelinePlants().length;
+    const costCoverage = costSeriesCount < totalSeriesCount
+      ? 'Costos disponibles: ' + costSeriesCount + ' de ' + totalSeriesCount + ' series'
+      : '';
     renderKpiCard('cost', {
       value: hasNumericValue(g.energyCostCop) ? formatMillionsCop(g.energyCostCop) : 'n.a.',
       unit: 'COP',
       note: costRatio ? 'Se gastó ' + moreOrLess((costRatio - 1) * 100) + ' que el ' + referenceLabel(ref.cost, year)
         : hasNumericValue(g.energyCostCop) ? 'Sin costos de ' + year + ' para comparar' : 'Sin costos en ' + monthLabel,
-      baseline: ref.cost ? referenceLabel(ref.cost, year).replace(/^p/, 'P') + ': ' + formatMillionsCop(ref.cost.value) + ' COP' : '',
+      baseline: [ref.cost ? referenceLabel(ref.cost, year).replace(/^p/, 'P') + ': ' + formatMillionsCop(ref.cost.value) + ' COP' : '', costCoverage].filter(Boolean).join(' · '),
       state: trafficLight(costRatio),
       title: 'Costo de energía y gas en ' + monthLabel + ' frente al promedio mensual de ' + year
-        + ' (solo meses con costo de las mismas plantas). ' + TRAFFIC_LIGHT_HELP
+        + ' (solo meses con costo de las mismas plantas). Importe del corte: ' + formatCurrencyCop(g.energyCostCop) + '. ' + TRAFFIC_LIGHT_HELP
     });
 
     // 3. Desempeño energético global (índice ISO 50001).
@@ -1933,7 +1954,7 @@ import * as api from './api.js';
       const costEl = card.querySelector('.submetric-cost');
       if (costEl) {
         costEl.textContent = getPlantCostDisplay(p, true);
-        costEl.title = 'Costo de energía en pesos colombianos (COP)';
+        costEl.title = 'Costo del archivo de origen: ' + formatCurrencyCop(getPlantCostCop(p));
       }
 
       const devEl = card.querySelector('.submetric-dev');
@@ -2064,7 +2085,7 @@ import * as api from './api.js';
       if (metricValues.length >= 3) {
         metricValues[0].textContent = formatDecimal(plant.ratioKwhUnit, 2);
         metricValues[1].textContent = getPlantCostDisplay(plant, true);
-        metricValues[1].title = 'Costo de energía en pesos colombianos (COP)';
+        metricValues[1].title = 'Costo del archivo de origen: ' + formatCurrencyCop(getPlantCostCop(plant));
         metricValues[2].textContent = hasNumericValue(plant.deviationPct) ? formatSigned(plant.deviationPct, 1) + '%' : 'n.a.';
         metricValues[2].style.color = hasNumericValue(plant.deviationPct)
           ? (plant.deviationPct > 0 ? 'var(--fire-red)' : 'var(--neon-green)')
@@ -2102,6 +2123,8 @@ import * as api from './api.js';
 
     const width = 280;
     const height = 36;
+    svgEl.setAttribute('viewBox', '-5 -2 ' + (width + 10) + ' ' + (height + 4));
+    svgEl.setAttribute('preserveAspectRatio', 'none');
     const minVal = Math.min(...points) * 0.9;
     const maxVal = Math.max(...points) * 1.1;
     const stepX = width / (points.length - 1);
@@ -2186,7 +2209,7 @@ import * as api from './api.js';
       dot.className = 'pulse-dot';
       const text = document.createElement('span');
 
-      if (currentPlant.isCritical && !DashboardStore.faultAcknowledged) {
+      if (currentPlant.isCritical) {
         statusPill.className = 'status-badge-live danger';
         text.textContent = currentPlant.analytics ? '▲ ALERTA DE DESEMPEÑO ENERGÉTICO' : '▲ PLANTA EN SOBRECONSUMO';
       } else {
@@ -2271,23 +2294,18 @@ import * as api from './api.js';
 
     const scadaStatusEl = document.getElementById('detail-kpi-scada-status');
     if (scadaStatusEl) {
-      scadaStatusEl.textContent = currentPlant.isCritical && !DashboardStore.faultAcknowledged ? 'ALERTA CONSUMO ALTO' : 'OPERACIÓN NORMAL';
-      scadaStatusEl.className = 'detail-kpi-val ' + (currentPlant.isCritical && !DashboardStore.faultAcknowledged ? 'red' : 'green');
+      scadaStatusEl.textContent = currentPlant.isCritical ? 'ALERTA CONSUMO ALTO' : 'OPERACIÓN NORMAL';
+      scadaStatusEl.className = 'detail-kpi-val ' + (currentPlant.isCritical ? 'red' : 'green');
     }
     setElementText('detail-kpi-scada-sensors', currentPlant.sensorsCount + ' Sensores IoT');
     setElementText('detail-kpi-status-title', currentPlant.analytics ? 'Estado analítico' : 'Estado SCADA');
     if (currentPlant.analytics) {
-      if (scadaStatusEl) scadaStatusEl.textContent = currentPlant.alertCount + ' ALERTAS ANALÍTICAS';
+      if (scadaStatusEl) scadaStatusEl.textContent = currentPlant.alertCount + (currentPlant.alertCount === 1 ? ' PROCESO CON ALERTA' : ' PROCESOS CON ALERTA');
       setElementText('detail-kpi-scada-sensors', 'Reglas de rango + presupuesto');
     }
 
     const deleteButton = document.getElementById('btn-delete-current-plant');
     if (deleteButton) deleteButton.hidden = !currentPlant.isCustom;
-    const supportsThermalSimulation = currentPlant.id === 'rc_energy' && !currentPlant.analytics;
-    const setpointButton = document.getElementById('btn-open-setpoint-modal');
-    const drawerSetpointButton = document.getElementById('drawer-btn-setpoint');
-    if (setpointButton) setpointButton.hidden = !supportsThermalSimulation;
-    if (drawerSetpointButton) drawerSetpointButton.hidden = !supportsThermalSimulation;
     setTextPreservingIcon('btn-diag-inspect', 'Ver datos del corte');
 
     const kwhState = renderPercentComparison('detail-kpi-kwh-trend', currentPlant.kwh, currentPlant.previous.kwh, true);
@@ -2500,7 +2518,7 @@ import * as api from './api.js';
     const currentPct = Math.min(Math.max(kwh / maxKwh, 0), 1);
     const hasBudget = hasNumericValue(budget);
     const isOverBudget = hasBudget && kwh > budget;
-    const needleColor = !hasBudget ? '#B8A6FF' : (isOverBudget ? '#FF3D57' : '#00E676');
+    const needleColor = !hasBudget ? 'var(--clarios-purple-light)' : (isOverBudget ? 'var(--fire-red)' : 'var(--neon-green)');
     const needleLines = document.querySelectorAll('.stitch-needle-line');
 
     needleLines.forEach(line => {
@@ -2714,10 +2732,10 @@ import * as api from './api.js';
       const value = maxValue - ((maxValue - minValue) / 3) * index;
       svg.appendChild(createSvgElement('line', {
         x1: padding.left, y1: y, x2: width - padding.right, y2: y,
-        stroke: 'rgba(255,255,255,0.06)', 'stroke-width': 1
+        stroke: 'var(--border-bright)', 'stroke-width': 1
       }));
       svg.appendChild(createSvgElement('text', {
-        x: padding.left - 6, y: y + 3, 'text-anchor': 'end', fill: '#6C7689',
+        x: padding.left - 6, y: y + 3, 'text-anchor': 'end', fill: 'var(--text-muted)',
         'font-size': 9, 'font-family': 'var(--font-mono)'
       }, formatCompactNumber(value)));
     }
@@ -2745,7 +2763,7 @@ import * as api from './api.js';
 
     [...new Set([0, Math.floor((records.length - 1) / 2), records.length - 1])].forEach(index => {
       svg.appendChild(createSvgElement('text', {
-        x: getX(index), y: height - 7, 'text-anchor': 'middle', fill: '#6C7689', 'font-size': 9
+        x: getX(index), y: height - 7, 'text-anchor': 'middle', fill: 'var(--text-muted)', 'font-size': 9
       }, formatMonthLabel(records[index].fecha)));
     });
   }
@@ -2797,7 +2815,7 @@ import * as api from './api.js';
       'intensity',
       formatDecimal(latest.intensidad, 2) + ' ' + analytics.intensityUnit,
       formatPercentChange(intensityChange) + (hasNumericValue(range.z) ? ' · z=' + formatDecimal(range.z, 2) : ' · sin rango estadístico suficiente'),
-      range.estado === 'normal' ? 'positive' : (range.estado === 'sin_historia' ? 'neutral' : 'negative')
+      getIntensityRangeStatus(range).state
     );
     setAnalyticsSignal(
       'budget',
@@ -2812,13 +2830,14 @@ import * as api from './api.js';
       hasNumericValue(latest.costo_total) ? formatCurrencyCop(latest.costo_total, true) : 'n.a.',
       hasNumericValue(costChange)
         ? formatPercentChange(costChange) + ' y tarifa ' + formatPercentChange(tariffChange)
-        : 'El archivo no declara costo para este corte',
+        : (hasNumericValue(latest.costo_total) ? 'Sin costo anterior comparable' : 'El archivo no declara costo para este corte'),
       !hasNumericValue(costChange) ? 'neutral' : (costChange > 0 ? 'negative' : 'positive')
     );
 
     const insightParts = [];
-    if (hasNumericValue(range.esperado)) {
-      insightParts.push('La intensidad está ' + formatSigned(percentageChange(latest.intensidad, range.esperado), 1) + '% frente a lo esperado');
+    const historicalGap = percentageChange(latest.intensidad, range.esperado);
+    if (hasNumericValue(historicalGap)) {
+      insightParts.push('La intensidad está ' + formatSigned(historicalGap, 1) + '% frente a lo esperado');
     }
     if (hasNumericValue(budgetDeviation)) insightParts.push(formatSigned(budgetDeviation, 1) + '% frente al presupuesto');
     if (hasNumericValue(estimatedCostImpact)) insightParts.push('impacto estimado: ' + formatCurrencyCop(estimatedCostImpact, true));
@@ -2845,7 +2864,7 @@ import * as api from './api.js';
     const records = series.filter(record => hasNumericValue(record.intensidad));
     if (records.length < 2) {
       svg.appendChild(createSvgElement('text', {
-        x: 380, y: 140, 'text-anchor': 'middle', fill: '#788296', 'font-size': 12
+        x: 380, y: 140, 'text-anchor': 'middle', fill: 'var(--text-muted)', 'font-size': 12
       }, 'Se requieren dos cortes con desempeño energético para dibujar la tendencia.'));
       return;
     }
@@ -2874,10 +2893,10 @@ import * as api from './api.js';
       const value = maxValue - ((maxValue - minValue) / 4) * index;
       svg.appendChild(createSvgElement('line', {
         x1: padding.left, y1: y, x2: width - padding.right, y2: y,
-        stroke: 'rgba(255,255,255,0.065)', 'stroke-width': 1
+        stroke: 'var(--border-bright)', 'stroke-width': 1
       }));
       svg.appendChild(createSvgElement('text', {
-        x: padding.left - 8, y: y + 4, 'text-anchor': 'end', fill: '#788296',
+        x: padding.left - 8, y: y + 4, 'text-anchor': 'end', fill: 'var(--text-muted)',
         'font-size': 10, 'font-family': 'var(--font-mono)'
       }, formatDecimal(value, 1)));
     }
@@ -2898,9 +2917,9 @@ import * as api from './api.js';
       }));
     }
 
-    appendSeriesPath(svg, records, getX, getY, record => record.rangos?.intensidad?.esperado, '#00D8FF', '5 4', 1.6);
+    appendSeriesPath(svg, records, getX, getY, record => record.rangos?.intensidad?.esperado, 'var(--cyan-telemetry)', '5 4', 1.6);
     appendSeriesPath(svg, records, getX, getY, record => record.intensidad_ppto, '#FFAB00', '3 4', 1.7);
-    appendSeriesPath(svg, records, getX, getY, record => record.intensidad, '#A984FF', '', 2.7);
+    appendSeriesPath(svg, records, getX, getY, record => record.intensidad, 'var(--clarios-purple-light)', '', 2.7);
 
     const lastIndex = records.length - 1;
     const last = records[lastIndex];
@@ -2910,16 +2929,16 @@ import * as api from './api.js';
     }));
     svg.appendChild(createSvgElement('text', {
       x: getX(lastIndex) - 8, y: getY(Number(last.intensidad)) - 10, 'text-anchor': 'end',
-      fill: '#FF7A8C', 'font-size': 10, 'font-weight': 700, 'font-family': 'var(--font-mono)'
+      fill: 'var(--fire-red)', 'font-size': 10, 'font-weight': 700, 'font-family': 'var(--font-mono)'
     }, formatDecimal(last.intensidad, 2)));
 
     [...new Set([0, 6, 12, 18, records.length - 1].filter(index => index < records.length))].forEach(index => {
       svg.appendChild(createSvgElement('text', {
-        x: getX(index), y: height - 12, 'text-anchor': 'middle', fill: '#788296', 'font-size': 9
+        x: getX(index), y: height - 12, 'text-anchor': 'middle', fill: 'var(--text-muted)', 'font-size': 9
       }, formatMonthLabel(records[index].fecha)));
     });
     svg.appendChild(createSvgElement('text', {
-      x: padding.left, y: 12, fill: '#788296', 'font-size': 9
+      x: padding.left, y: 12, fill: 'var(--text-muted)', 'font-size': 9
     }, unit));
   }
 
@@ -2951,10 +2970,10 @@ import * as api from './api.js';
 
     processes.forEach(process => {
       const latest = findProcessRecord(process, period);
-      if (!latest || !Number.isFinite(Number(latest.intensidad))) return;
+      if (!latest || !hasNumericValue(latest.intensidad)) return;
       const range = latest.rangos?.intensidad || {};
       const budgetDeviation = hasNumericValue(latest.desviacion_ppto) ? Number(latest.desviacion_ppto) * 100 : null;
-      const dualSignal = hasNumericValue(budgetDeviation) && budgetDeviation < 0 && !['normal', 'sin_historia'].includes(range.estado);
+      const dualSignal = hasNumericValue(budgetDeviation) && budgetDeviation < 0 && ['alto', 'bajo'].includes(range.estado);
       const scaleMax = Math.max(
         Number(latest.intensidad),
         Number(range.rango_max) || 0,
@@ -2971,8 +2990,8 @@ import * as api from './api.js';
       const states = document.createElement('div');
       states.className = 'analytics-state-group';
       states.appendChild(createStateChip(
-        range.estado === 'normal' ? 'En rango' : (range.estado === 'sin_historia' ? 'Historia insuficiente' : 'Rango ' + range.estado),
-        range.estado === 'normal' ? 'positive' : (range.estado === 'sin_historia' ? 'neutral' : 'negative')
+        getIntensityRangeStatus(range).label,
+        getIntensityRangeStatus(range).state
       ));
       states.appendChild(createStateChip(
         hasNumericValue(budgetDeviation) ? formatSigned(budgetDeviation, 1) + '% ppto' : 'Sin ppto',
@@ -3178,7 +3197,6 @@ import * as api from './api.js';
     const card = document.getElementById('diagnostic-card');
     const badge = document.getElementById('diag-trip-badge');
     const desc = document.getElementById('diag-body-text');
-    const btnAck = document.getElementById('btn-diag-ack');
     const meta = document.getElementById('diagnostic-meta-strip');
 
     if (!card) return;
@@ -3186,9 +3204,10 @@ import * as api from './api.js';
     if (plant.analytics) {
       const latest = plant.analytics.latest;
       const range = latest.rangos?.intensidad || {};
-      const hasAlerts = plant.alertCount > 0;
-      card.classList.toggle('resolved', !hasAlerts);
-      if (badge) badge.textContent = hasAlerts ? 'PRIORIDAD: DESEMPEÑO ENERGÉTICO' : 'LECTURA ANALÍTICA EN RANGO';
+      const hasAlerts = plant.analytics.alerts.length > 0 || range.estado === 'alto' || Number(latest.desviacion_ppto) > 0;
+      const hasReference = hasPerformanceReference(plant);
+      card.classList.toggle('resolved', !hasAlerts && hasReference);
+      if (badge) badge.textContent = hasAlerts ? 'PRIORIDAD: DESEMPEÑO ENERGÉTICO' : (hasReference ? 'SIN ALERTAS ANALÍTICAS ACTIVAS' : 'REFERENCIAS INSUFICIENTES');
       if (desc) {
         const findings = [];
         if (hasNumericValue(latest.desviacion_ppto)) {
@@ -3202,39 +3221,25 @@ import * as api from './api.js';
         }
         const mostRelevant = plant.analytics.alerts?.[0]?.proceso;
         if (mostRelevant) findings.push('la primera señal a revisar corresponde a ' + formatProcessName(mostRelevant));
-        desc.textContent = plant.name + ': ' + findings.join('; ') + '. ' + (hasAlerts ? 'Conviene revisar las señales por proceso antes del siguiente corte.' : 'No se detectaron señales analíticas activas en el período seleccionado.');
+        desc.textContent = plant.name + ': ' + findings.join('; ') + '. ' + (hasAlerts ? 'Conviene revisar las señales por proceso antes del siguiente corte.' : (hasReference ? 'No se detectaron señales analíticas activas con las reglas disponibles en el período seleccionado.' : 'La ausencia de alertas no confirma buen desempeño: faltan una meta y un rango histórico válido para evaluar este corte.'));
       }
       if (meta) {
         meta.textContent = 'Corte: ' + formatMonthLabel(latest.fecha) + ' · Fuente: ' + (plant.sourceFileName || 'planta_fya_energia.json') + ' · Generado: ' + formatGeneratedDate(plant.analytics.generatedAt);
       }
-      if (btnAck) {
-        btnAck.textContent = hasAlerts ? 'Revisar señales del corte' : 'Ver cálculo del corte';
-        btnAck.disabled = false;
-        btnAck.classList.remove('acked');
-      }
       return;
     }
 
-    if (btnAck) btnAck.disabled = false;
-    if (meta) meta.textContent = 'Telemetría operativa · Gateway: ' + plant.nodeUri;
+    if (meta) meta.textContent = 'Snapshot demostrativo local · Sin conexión SCADA real';
 
-    if (plant.isCritical && !DashboardStore.faultAcknowledged) {
+    if (plant.isCritical) {
       card.classList.remove('resolved');
-      if (badge) badge.textContent = 'AVISO CRÍTICO DE OPERACIÓN';
+      if (badge) badge.textContent = 'ALERTA DEL ESCENARIO DEMOSTRATIVO';
       const ratioDeviation = ((plant.ratioKwhUnit - plant.ratioTarget) / plant.ratioTarget) * 100;
       if (desc) desc.textContent = `La demanda total supera el presupuesto en ${formatDecimal(plant.deviationPct, 1)}%; el desempeño energético está ${formatDecimal(ratioDeviation, 1)}% sobre la meta (${formatDecimal(plant.ratioKwhUnit, 2)} frente a ${formatDecimal(plant.ratioTarget, 2)} ${getPlantIntensityUnit(plant)}). Fuente local: ${plant.nodeUri}.`;
-      if (btnAck) {
-        btnAck.textContent = 'Confirmar alerta local';
-        btnAck.classList.remove('acked');
-      }
     } else {
       card.classList.add('resolved');
-      if (badge) badge.textContent = 'DIAGNÓSTICO: OPERACIÓN NORMAL';
+      if (badge) badge.textContent = 'ESCENARIO DEMOSTRATIVO SIN ALERTAS';
       if (desc) desc.textContent = `No hay alertas locales activas para ${plant.name}. Este estado procede del snapshot demostrativo y no confirma cumplimiento ISO ni una condición SCADA real.`;
-      if (btnAck) {
-        btnAck.textContent = '✓ Alerta confirmada';
-        btnAck.classList.add('acked');
-      }
     }
   }
 
@@ -3249,6 +3254,12 @@ import * as api from './api.js';
 
     // Click to select
     dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        fileInput.click();
+      }
+    });
 
     // Drag and drop events
     ['dragenter', 'dragover'].forEach(eventName => {
@@ -3705,21 +3716,47 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     return id;
   }
 
+  function getIntensityRangeStatus(range = {}) {
+    const states = {
+      normal: { label: 'En rango histórico', state: 'positive' },
+      alto: { label: 'Sobre el rango histórico', state: 'negative' },
+      bajo: { label: 'Bajo el rango histórico', state: 'neutral' },
+      sin_historia: { label: 'Sin historia suficiente', state: 'neutral' },
+      inactivo: { label: 'Proceso inactivo', state: 'neutral' },
+      excluido: { label: 'Excluido del rango histórico', state: 'neutral' },
+      sin_dato: { label: 'Sin dato de intensidad', state: 'neutral' }
+    };
+    return states[range.estado] || { label: 'Sin rango histórico válido', state: 'neutral' };
+  }
+
+  function hasPerformanceReference(plant) {
+    const latest = plant.analytics?.latest;
+    const target = latest ? latest.intensidad_ppto : plant.ratioTarget;
+    return (hasNumericValue(target) && Number(target) > 0) ||
+      ['normal', 'alto', 'bajo'].includes(latest?.rangos?.intensidad?.estado);
+  }
+
   function buildPlantAnalysis(plant) {
     const analytics = plant.analytics;
+    const current = analytics?.latest;
+    const previous = analytics?.previous;
     const currentPeriod = analytics?.latest?.fecha || 'snapshot-local';
     const previousPeriod = analytics?.previous?.fecha || 'corte anterior de referencia';
-    const consumptionChange = percentageChange(plant.kwh, plant.previous?.kwh);
-    const productionChange = percentageChange(plant.productionUnits, plant.previous?.productionUnits);
-    const intensityChange = percentageChange(plant.ratioKwhUnit, plant.previous?.ratioKwhUnit);
+    const consumption = current ? current.consumo : plant.kwh;
+    const previousConsumption = previous ? previous.consumo : plant.previous?.kwh;
+    const consumptionChange = percentageChange(consumption, previousConsumption);
+    const productionChange = percentageChange(current ? current.produccion : plant.productionUnits, previous ? previous.produccion : plant.previous?.productionUnits);
     const ratioGap = hasNumericValue(plant.ratioTarget) && Number(plant.ratioTarget) !== 0
       ? percentageChange(plant.ratioKwhUnit, plant.ratioTarget)
       : null;
     const currentCost = getPlantCostCop(plant);
     const previousCost = analytics ? plant.previous?.costAmount : plant.previous?.costCop;
     const costChange = percentageChange(currentCost, previousCost);
-    const budgetGapKwh = hasNumericValue(plant.budgetKwh)
-      ? Number(plant.kwh) - Number(plant.budgetKwh)
+    const budget = current
+      ? (hasNumericValue(current.produccion) && hasNumericValue(current.intensidad_ppto) ? Number(current.produccion) * Number(current.intensidad_ppto) : null)
+      : plant.budgetKwh;
+    const budgetGapKwh = hasNumericValue(budget)
+      ? Number(consumption) - Number(budget)
       : null;
     const range = analytics?.latest?.rangos?.intensidad || {};
     const processes = Array.isArray(plant.processes) ? plant.processes.filter(process => hasNumericValue(process.kwh)) : [];
@@ -3727,32 +3764,34 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       ? [...processes].sort((left, right) => Number(right.kwh) - Number(left.kwh))[0]
       : null;
     const alertCount = Number(plant.alertCount || 0);
+    const signalCount = analytics?.alerts?.length || 0;
+    const hasReference = hasPerformanceReference(plant);
     const deviation = hasNumericValue(plant.deviationPct) ? Number(plant.deviationPct) : null;
     const isHighPriority = alertCount >= 2 || (hasNumericValue(deviation) && deviation >= 10) || (hasNumericValue(ratioGap) && ratioGap >= 10);
-    const isMediumPriority = !isHighPriority && (alertCount > 0 || (hasNumericValue(deviation) && deviation > 2) || (hasNumericValue(ratioGap) && ratioGap > 2));
+    const isMediumPriority = !isHighPriority && (alertCount > 0 || range.estado === 'alto' || (hasNumericValue(deviation) && deviation > 2) || (hasNumericValue(ratioGap) && ratioGap > 2));
     const priority = isHighPriority
       ? { key: 'high', label: 'Prioridad alta' }
-      : (isMediumPriority ? { key: 'medium', label: 'Prioridad media' } : { key: 'low', label: 'Prioridad controlada' });
-    const seriesCount = analytics?.totalSeries?.length || 0;
-    const confidence = analytics
-      ? (seriesCount >= 12 ? 'Alta para tendencia mensual' : 'Media: historia limitada')
+      : (isMediumPriority ? { key: 'medium', label: 'Prioridad media' } : (hasReference && analytics ? { key: 'low', label: 'Sin alertas prioritarias' } : { key: 'neutral', label: analytics ? 'Evaluación limitada' : 'Escenario demostrativo' }));
+    const seriesCount = analytics?.totalSeries?.filter(record => record.fecha <= currentPeriod).length || 0;
+    const scope = analytics
+      ? 'Descriptivo · ' + seriesCount + ' cortes hasta este período'
       : 'Referencial: datos demostrativos';
     const sourceLabel = analytics
-      ? 'Fuente: ' + (plant.sourceFileName || 'planta_fya_energia.json') + ' · ' + seriesCount + ' cortes mensuales'
+      ? 'Fuente: ' + (plant.sourceFileName || 'planta_fya_energia.json') + ' · ' + seriesCount + ' cortes mensuales hasta ' + formatMonthLabel(currentPeriod)
       : 'Fuente: snapshot demostrativo incluido en el tablero · sin conexión SCADA real';
 
     const findings = [];
     if (hasNumericValue(consumptionChange)) {
       findings.push(
-        'El consumo fue ' + formatConsumption(plant, plant.kwh) + ' y ' +
+        'El consumo fue ' + formatConsumption(plant, consumption) + ' y ' +
         (consumptionChange > 0 ? 'aumentó ' : (consumptionChange < 0 ? 'disminuyó ' : 'no cambió ')) +
-        formatDecimal(Math.abs(consumptionChange), 1) + '% frente al corte anterior (' + formatConsumption(plant, plant.previous.kwh) + ').'
+        formatDecimal(Math.abs(consumptionChange), 1) + '% frente al corte anterior disponible (' + formatConsumption(plant, previousConsumption) + ').'
       );
     }
     if (hasNumericValue(ratioGap)) {
       findings.push(
         'El desempeño energético es ' + formatDecimal(plant.ratioKwhUnit, 2) + ' ' + getPlantIntensityUnit(plant) +
-        ', ' + formatDecimal(Math.abs(ratioGap), 1) + '% ' + (ratioGap > 0 ? 'por encima' : 'por debajo') + ' de la meta.'
+        ', ' + (ratioGap === 0 ? 'igual a la meta.' : formatDecimal(Math.abs(ratioGap), 1) + '% ' + (ratioGap > 0 ? 'por encima' : 'por debajo') + ' de la meta.')
       );
     } else {
       findings.push('No existe una meta de desempeño energético suficiente para evaluar la eficiencia por unidad producida.');
@@ -3760,7 +3799,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     if (hasNumericValue(deviation) && hasNumericValue(budgetGapKwh)) {
       findings.push(
         'La brecha presupuestaria es ' + formatSigned(deviation, 1) + '%: ' +
-        formatConsumption(plant, Math.abs(Math.round(budgetGapKwh))) + ' ' + (budgetGapKwh > 0 ? 'sobre' : 'por debajo de') + ' la meta estimada.'
+        (budgetGapKwh === 0 ? 'consumo igual a la meta estimada.' : formatConsumption(plant, Math.abs(budgetGapKwh)) + ' ' + (budgetGapKwh > 0 ? 'sobre' : 'por debajo de') + ' la meta estimada.')
       );
     }
     if (hasNumericValue(costChange) && hasNumericValue(currentCost)) {
@@ -3775,16 +3814,18 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
         topProcess.name + ' concentra ' + formatDecimal(topProcess.pct, 1) + '% del consumo visible (' + formatConsumption(plant, topProcess.kwh) + '); es el primer frente para segmentar la revisión.'
       );
     }
-    if (hasNumericValue(range.esperado)) {
-      const historicalGap = percentageChange(plant.ratioKwhUnit, range.esperado);
+    const historicalGap = percentageChange(plant.ratioKwhUnit, range.esperado);
+    if (hasNumericValue(historicalGap)) {
       findings.push(
-        'Frente al rango histórico, el desempeño energético está ' + formatDecimal(Math.abs(historicalGap), 1) + '% ' +
-        (historicalGap > 0 ? 'por encima' : 'por debajo') + ' del valor esperado de ' + formatDecimal(range.esperado, 2) + ' ' + getPlantIntensityUnit(plant) + '.'
+        'Frente al rango histórico, el desempeño energético ' + (historicalGap === 0 ? 'coincide con' : 'está ' + formatDecimal(Math.abs(historicalGap), 1) + '% ' +
+        (historicalGap > 0 ? 'por encima' : 'por debajo') + ' del') + ' valor esperado de ' + formatDecimal(range.esperado, 2) + ' ' + getPlantIntensityUnit(plant) + '.'
       );
     }
-    findings.push(alertCount > 0
-      ? 'Hay ' + alertCount + ' señal' + (alertCount === 1 ? '' : 'es') + ' analítica' + (alertCount === 1 ? '' : 's') + ' que requieren validación operativa.'
-      : 'No se detectaron alertas activas con las reglas disponibles para este corte.');
+    findings.push(analytics
+      ? (signalCount > 0
+        ? 'Hay ' + signalCount + (signalCount === 1 ? ' señal analítica' : ' señales analíticas') + ' en ' + alertCount + (alertCount === 1 ? ' proceso' : ' procesos') + (signalCount === 1 ? '; requiere' : '; requieren') + ' validación operativa.'
+        : 'No se detectaron alertas por proceso con las reglas disponibles para este corte.' + (!hasReference ? ' Faltan una meta y un rango histórico válido; esto no confirma buen desempeño.' : ''))
+      : 'El estado mostrado pertenece al escenario demostrativo y no acredita una condición operativa real.');
 
     const decisions = [];
     if (alertCount > 0 || (hasNumericValue(deviation) && deviation > 0)) {
@@ -3815,10 +3856,17 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
         indicator: 'Seguimiento: producción, horas operadas, desempeño energético y reproceso.'
       });
     }
-    if (!decisions.length) {
+    if (!hasReference && analytics) {
+      decisions.push({
+        title: 'Completar las referencias antes de evaluar el desempeño',
+        detail: 'El corte no tiene una meta ni un rango histórico válido. Validar la cobertura, la producción y el presupuesto con la fuente; la ausencia de alertas no demuestra eficiencia.',
+        indicator: 'Criterio de cierre: referencias comparables y datos válidos para el corte seleccionado.'
+      });
+    }
+    if (!decisions.length && analytics) {
       decisions.push({
         title: 'Mantener el control y documentar la práctica favorable',
-        detail: 'El corte no muestra una desviación prioritaria. Registrar las condiciones de operación que ayudaron al resultado para comprobar si son repetibles.',
+        detail: 'El corte no muestra una desviación prioritaria con las reglas disponibles. Registrar las condiciones de operación y comprobar si el resultado es repetible.',
         indicator: 'Seguimiento: conservar el desempeño energético en meta durante los próximos tres cortes.'
       });
     }
@@ -3836,11 +3884,13 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       'Las relaciones observadas son descriptivas. No prueban causalidad sin datos de operación, mantenimiento, producción, calidad y clima.'
     ];
     if (!hasNumericValue(currentCost)) limitations.push('La fuente no contiene un costo válido para este corte.');
-    if (!hasNumericValue(plant.budgetKwh)) limitations.push('La fuente no contiene presupuesto energético comparable.');
+    if (!hasNumericValue(budget)) limitations.push('La fuente no contiene presupuesto energético comparable.');
+    if (analytics && !['normal', 'alto', 'bajo'].includes(range.estado)) limitations.push('El corte no tiene un rango histórico de intensidad válido: ' + getIntensityRangeStatus(range).label.toLowerCase() + '.');
+    if (analytics) limitations.push('La prioridad resume reglas de rango y presupuesto; no es una probabilidad ni una medida de confianza estadística.');
 
     const prioritySentence = priority.key === 'high'
       ? 'requiere atención prioritaria'
-      : (priority.key === 'medium' ? 'requiere seguimiento dirigido' : 'se encuentra bajo control con los datos disponibles');
+      : (priority.key === 'medium' ? 'requiere seguimiento dirigido' : (priority.key === 'low' ? 'no presenta alertas prioritarias según las reglas disponibles' : (analytics ? 'no puede evaluarse frente a una meta o rango histórico válido' : 'muestra un escenario demostrativo, sin validación operativa real')));
     const consumptionSentence = hasNumericValue(consumptionChange)
       ? 'El consumo ' + (consumptionChange > 0 ? 'subió ' : (consumptionChange < 0 ? 'bajó ' : 'se mantuvo ')) + formatDecimal(Math.abs(consumptionChange), 1) + '% frente al corte anterior'
       : 'No hay un corte anterior comparable para consumo';
@@ -3855,12 +3905,12 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       previousPeriod: analytics ? formatMonthLabel(previousPeriod) : 'Referencia local anterior',
       sourceLabel,
       priority,
-      confidence,
+      scope,
       summary: plant.name + ' ' + prioritySentence + '. ' + consumptionSentence + budgetSentence,
       metrics: [
         {
           label: 'Consumo',
-          value: formatConsumption(plant, plant.kwh),
+          value: formatConsumption(plant, consumption),
           detail: hasNumericValue(consumptionChange) ? formatPercentChange(consumptionChange) + ' vs corte anterior' : 'Sin comparación',
           state: !hasNumericValue(consumptionChange) ? 'neutral' : (consumptionChange > 0 ? 'negative' : 'positive')
         },
@@ -3902,7 +3952,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       priorityBadge.textContent = analysis.priority.label;
       priorityBadge.className = 'analysis-priority-badge ' + analysis.priority.key;
     }
-    setElementText('analysis-confidence-badge', 'Confianza: ' + analysis.confidence);
+    setElementText('analysis-confidence-badge', 'Alcance: ' + analysis.scope);
 
     const metricGrid = document.getElementById('analysis-metric-grid');
     if (metricGrid) {
@@ -4087,7 +4137,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     addText(analysis.plantName, { size: 19, bold: true, color: '0.12 0.06 0.24', after: 2 });
     addText('Corte: ' + analysis.period + ' | Comparación: ' + analysis.previousPeriod, { size: 9, color: '0.35 0.38 0.44' });
     addText(analysis.sourceLabel, { size: 8.5, color: '0.35 0.38 0.44', after: 7 });
-    addText(analysis.priority.label + ' | Confianza: ' + analysis.confidence, { size: 10, bold: true, color: analysis.priority.key === 'high' ? '0.75 0.08 0.16' : (analysis.priority.key === 'medium' ? '0.72 0.42 0.02' : '0.02 0.50 0.28'), after: 8 });
+    addText(analysis.priority.label + ' | Alcance: ' + analysis.scope, { size: 10, bold: true, color: analysis.priority.key === 'high' ? '0.75 0.08 0.16' : (analysis.priority.key === 'medium' ? '0.72 0.42 0.02' : (analysis.priority.key === 'neutral' ? '0.35 0.38 0.43' : '0.02 0.50 0.28')), after: 8 });
 
     addSection('Lectura ejecutiva');
     addText(analysis.summary, { size: 10.5, lineHeight: 15, after: 7 });
@@ -4199,11 +4249,10 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       plant.analytics.processes.forEach(process => {
         const record = findProcessRecord(process, period);
         if (!record) return;
-        const rangeState = record.rangos?.intensidad?.estado || 'sin_historia';
-        const stateLabel = rangeState === 'normal'
-          ? 'En rango'
-          : (rangeState === 'sin_historia' ? 'Sin historia suficiente' : 'Fuera de rango: ' + rangeState);
-        const stateClass = rangeState === 'normal' ? 'normal' : (rangeState === 'sin_historia' ? 'neutral' : 'alert');
+        const rangeStatus = getIntensityRangeStatus(record.rangos?.intensidad);
+        const overBudget = hasNumericValue(record.desviacion_ppto) && Number(record.desviacion_ppto) > 0;
+        const stateLabel = rangeStatus.label + (overBudget ? ' · Sobre presupuesto' : '');
+        const stateClass = overBudget || rangeStatus.state === 'negative' ? 'alert' : (rangeStatus.state === 'positive' ? 'normal' : 'neutral');
         appendRow(
           formatMonthLabel(period),
           formatProcessName(process.proceso),
@@ -4231,61 +4280,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
   }
 
   function initModals() {
-    // 1. Burner Setpoint Modal
-    const btnOpenSetpoint = document.getElementById('btn-open-setpoint-modal');
-    const modalSetpoint = document.getElementById('modal-setpoint');
-    const btnCloseSetpoint = document.getElementById('btn-close-setpoint');
-    const btnCancelSetpoint = document.getElementById('btn-cancel-setpoint');
-    const btnApplySetpoint = document.getElementById('btn-apply-setpoint');
-    const sliderBurner = document.getElementById('slider-burner-temp');
-    const sliderValDisplay = document.getElementById('slider-val-display');
-
-    if (btnOpenSetpoint && modalSetpoint) {
-      btnOpenSetpoint.addEventListener('click', () => {
-        if (DashboardStore.currentPlantId !== 'rc_energy') return;
-        modalSetpoint.classList.add('open');
-      });
-    }
-
-    [btnCloseSetpoint, btnCancelSetpoint].forEach(btn => {
-      if (btn) btn.addEventListener('click', () => modalSetpoint.classList.remove('open'));
-    });
-
-    if (sliderBurner && sliderValDisplay) {
-      sliderBurner.addEventListener('input', (e) => {
-        sliderValDisplay.textContent = e.target.value + ' °C';
-      });
-    }
-
-    if (btnApplySetpoint && sliderBurner) {
-      btnApplySetpoint.addEventListener('click', () => {
-        const temp = parseInt(sliderBurner.value, 10);
-        // If reduced to 430 or below, bring consumption below budget
-        if (temp <= 435) {
-          const rc = DashboardStore.plants.rc_energy;
-          const priorKwh = rc.kwh;
-          const priorCost = rc.costCop;
-          rc.kwh = 765000;
-          rc.costCop = Math.round(rc.kwh * DEFAULT_ENERGY_TARIFF_COP);
-          rc.ratioKwhUnit = rc.kwh / rc.productionUnits;
-          rc.deviationPct = -1.9;
-          rc.isCritical = false;
-          rc.alertCount = 0;
-          DashboardStore.global.totalEnergyKwh -= (priorKwh - rc.kwh);
-          DashboardStore.global.energyCostCop -= (priorCost - rc.costCop);
-          DashboardStore.global.budgetDeviationPct = ((DashboardStore.global.totalEnergyKwh - DashboardStore.global.budgetEnergyKwh) / DashboardStore.global.budgetEnergyKwh) * 100;
-          DashboardStore.global.alertCount = Object.values(DashboardStore.plants).reduce((sum, plant) => sum + plant.alertCount, 0);
-          DashboardStore.faultAcknowledged = true;
-          showToast(`Punto de ajuste simulado en ${temp} °C. Demanda térmica bajo presupuesto.`, 'success');
-        } else {
-          showToast(`Punto de ajuste simulado en ${temp} °C.`, 'normal');
-        }
-        modalSetpoint.classList.remove('open');
-        renderAllViews();
-      });
-    }
-
-    // 2. SCADA Inspector Modal
+    // Inspector de los datos del corte seleccionado
     const btnInspect = document.getElementById('btn-diag-inspect');
     const modalInspect = document.getElementById('modal-inspect');
     const btnCloseInspect = document.getElementById('btn-close-inspect');
@@ -4304,23 +4299,6 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       if (event.key === 'Escape' && modalInspect?.classList.contains('open')) modalInspect.classList.remove('open');
     });
 
-    // 3. Acknowledge Fault Button
-    const btnAck = document.getElementById('btn-diag-ack');
-    if (btnAck) {
-      btnAck.addEventListener('click', () => {
-        const currentPlant = DashboardStore.plants[DashboardStore.currentPlantId];
-        if (currentPlant?.analytics) {
-          renderDataInspector(currentPlant);
-          return;
-        }
-        DashboardStore.faultAcknowledged = !DashboardStore.faultAcknowledged;
-        updatePlantDetailView();
-        showToast(
-          DashboardStore.faultAcknowledged ? 'Falla SCADA confirmada por operador.' : 'Estado de alerta restaurado.',
-          DashboardStore.faultAcknowledged ? 'success' : 'normal'
-        );
-      });
-    }
   }
 
   function exportPlantCSV() {

@@ -1,6 +1,8 @@
 """Configuración del pipeline: fuentes, columnas y parámetros estadísticos.
 
 Las hojas de planta no se configuran aquí: se detectan del Excel (ver pipeline/esquema.py)."""
+import os
+import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,7 +61,27 @@ SEASONAL_ALPHA = 0.05
 # --- Modelos de pronóstico ---
 MODELS_DIR = OUTPUT_DIR / "modelos"
 R_DIR = ROOT / "modelos"
-RSCRIPT = "Rscript"
+
+
+def _rscript():
+    """Usa la ruta explícita, el PATH o una instalación estándar de R en Windows."""
+    if os.environ.get("CLARIOS_RSCRIPT"):
+        return os.environ["CLARIOS_RSCRIPT"]
+    executable = shutil.which("Rscript")
+    if executable:
+        return executable
+    if os.name == "nt":
+        for variable, subdir in (("LOCALAPPDATA", "Programs/R"), ("ProgramFiles", "R")):
+            if os.environ.get(variable):
+                base = Path(os.environ[variable]) / subdir
+                candidates = sorted(base.glob("R-*/bin/Rscript.exe"),
+                                    key=lambda p: p.stat().st_mtime, reverse=True)
+                if candidates:
+                    return str(candidates[0])
+    return "Rscript"
+
+
+RSCRIPT = _rscript()
 FORECAST_SEED = 2026
 # Plan de producción por defecto de los escenarios: promedio de los últimos meses (el front puede
 # reemplazarlo). Debe coincidir con PLAN_MONTHS en modelos/bsts_common.R.

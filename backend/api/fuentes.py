@@ -7,6 +7,7 @@ Si el pipeline falla se restauran el Excel y output/ anteriores.
 import json
 import logging
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -179,7 +180,8 @@ def _correr(j, xlsx):
         cmd = [sys.executable, "run_pipeline.py"] + (["--backtest"] if j["backtest"] else [])
         with open(carpeta / "pipeline.log", "w", encoding="utf-8") as f:
             proc = subprocess.Popen(cmd, cwd=config.ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    text=True, bufsize=1)
+                                    text=True, encoding="utf-8", bufsize=1,
+                                    env={**os.environ, "PYTHONIOENCODING": "utf-8"})
             for linea in proc.stdout:
                 f.write(linea)
                 j["log"] = (j["log"] + [linea.rstrip()])[-MAX_LOG:]

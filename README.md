@@ -18,12 +18,13 @@ La aplicación incluye una vista ejecutiva multi-planta, una vista reutilizable 
 - Eliminación de plantas personalizadas protegida por un código temporal generado al solicitar la eliminación.
 - Inventario y trazabilidad de fuentes de datos.
 - Vista previa y descarga de archivos CSV.
-- Carga de telemetría CSV y DAT con actualización de KPIs.
+- Carga de telemetría CSV y DAT desde la parte superior de Fuentes de datos.
 - Lectura local de Excel con detección de períodos, procesos y métricas energéticas.
 - Filtros de mes y año conectados a los cortes reales del JSON de F&A.
 - Análisis automatizado y explicable para cada planta, con hallazgos, prioridad y decisiones sugeridas.
 - Informe PDF descargable generado localmente desde el análisis de cada planta.
-- Navegación responsive para escritorio, tablet y móvil.
+- Menú hamburguesa visible en escritorio, tablet y móvil, con navegación, filtros y acciones de las plantas.
+- Switch de tema claro/oscuro que conserva la identidad Clarios y recuerda la selección.
 
 ## Vistas disponibles
 
@@ -49,6 +50,7 @@ La misma vista se reutiliza para Ensamble & OREC, F&A, RC Energía y Gas y cualq
 
 Muestra el recorrido de la información desde el archivo de origen hasta los KPIs, junto con:
 
+- Carga masiva de telemetría, situada antes del resumen y del inventario de documentos.
 - Inventario de fuentes.
 - Alcance y formato.
 - Estado de validación.
@@ -74,41 +76,84 @@ http://127.0.0.1:3000/#sources
 
 ## Ejecutar el proyecto
 
-Requisitos:
+Para usar la aplicación con sus datos del pipeline, se necesitan:
 
 - Node.js 18 o superior.
 - npm.
+- Python 3.12 o superior.
 
-```bash
-npm install
-npm run dev
-```
+No abras `index.html` con doble clic: un archivo HTML no puede iniciar por sí solo la API y el
+servidor web. Usa el comando de inicio desde la terminal integrada de VS Code o PowerShell.
 
-Abrir:
+### Preparación (una sola vez)
 
-```text
-http://127.0.0.1:3000
-```
-
-En PowerShell también puede utilizarse `npm.cmd`:
+Desde la carpeta raíz del repositorio:
 
 ```powershell
-npm.cmd install
-npm.cmd run dev
+npm.cmd ci
+py -3.13 -m venv backend\.venv
+backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 ```
+
+Si tienes Python 3.12 en vez de 3.13, cambia `-3.13` por `-3.12`.
+
+En Linux, crea un entorno propio (no copies la carpeta `.venv` de otro sistema):
+
+```bash
+npm ci
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/requirements.txt
+npm start
+```
+
+Para actualizar el código, conserva primero tus cambios locales en un commit o en un stash y,
+desde tu rama de trabajo con seguimiento remoto configurado, ejecuta:
+
+```bash
+git fetch origin
+git pull --ff-only
+```
+
+Repite la instalación de dependencias cuando cambien `package-lock.json` o
+`backend/requirements.txt`.
+
+### Iniciar la aplicación
+
+Desde la raíz del repositorio, ejecuta:
+
+```powershell
+npm.cmd start
+```
+
+El comando inicia la API y Vite, y abre el dashboard en el navegador. Si los puertos 3000 o 8000 ya
+están ocupados por esta misma aplicación, reutiliza la API existente y Vite selecciona otro puerto
+disponible (por ejemplo, 3001). Para detener los servicios, pulsa `Ctrl+C` en esa terminal.
+
+En **Vista General** y **Fuentes de datos** está disponible **Registrar nueva planta**. Las plantas
+creadas desde ese formulario se guardan en el navegador actual y se pueden eliminar después; son
+adicionales a las series del pipeline.
+
+`npm.cmd run dev` sigue disponible para ejecutar solamente el front; no inicia la API.
+
+Para procesar un Excel o regenerar pronósticos también se requiere R y los paquetes `bsts` y
+`jsonlite`. Los datos JSON ya generados se pueden consultar sin R.
+
+El Excel privado `backend/Base de datos.xlsx` no se descarga con Git. Sin ese archivo puedes
+consultar los datos publicados; para regenerarlos, coloca allí el Excel real o cárgalo desde el
+dashboard. Consulta [la preparación de R en Windows](backend/README.md#r-en-windows).
 
 ## Generar la versión de producción
 
-```bash
-npm run build
+```powershell
+npm.cmd run build
 ```
 
 El resultado se genera en `dist/`.
 
 Para probar esa versión:
 
-```bash
-npm run preview
+```powershell
+npm.cmd run preview
 ```
 
 ## Formato de telemetría
@@ -175,9 +220,10 @@ El código no se crea ni se guarda al registrar la planta. Al pulsar **Eliminar 
 
 ## Controles operativos y evidencia del dato
 
-- **Simular punto de ajuste térmico (RC):** es una simulación local disponible solo para RC Energía y Gas. No lee ni modifica PLC, Modbus o SCADA y no proviene del JSON; sirve únicamente para ensayar visualmente un escenario de reducción de temperatura y consumo.
-- **Ver datos del corte:** reemplaza el inspector SCADA estático. En F&A y plantas importadas muestra los registros del período activo tomados del archivo fuente, desglosados por proceso. En plantas base sin historial importado identifica explícitamente que el valor es un snapshot demostrativo.
-- **Revisar señales del corte / Ver cálculo del corte:** reemplaza la acción deshabilitada de “señal derivada de la fuente” y abre la evidencia del cálculo, sin fingir una conexión de telemetría inexistente.
+- **Ver datos del corte:** es la única acción del diagnóstico. Muestra los registros del período activo tomados del archivo fuente, desglosados por proceso, con consumo, intensidad, rango histórico y sobrepresupuesto. Los valores bajos, inactivos o sin historia no se presentan como alertas de intensidad alta. En plantas sin historial importado se identifica el snapshot demostrativo.
+- Se retiró **Ver cálculo del corte / Revisar señales del corte** porque abría exactamente la misma tabla.
+- Se retiró **Simular punto de ajuste térmico**: asignaba un consumo fijo al cruzar un umbral de temperatura, sin un modelo validado con los datos de la planta.
+- El informe distingue señales de procesos afectados y limita la historia al corte seleccionado. Describe el alcance de los datos sin atribuir una confianza estadística no calculada. La ausencia de meta e historia válida se identifica como evaluación limitada.
 
 ## Persistencia
 
