@@ -7,6 +7,7 @@ import {
   readPlantDataFile,
   selectAnalyticsPeriod
 } from './plant-data.js';
+import * as api from './api.js';
 
 /**
  * CLARIOS SCADA INDUSTRIAL AUTOMOTIVE DASHBOARD
@@ -29,6 +30,13 @@ import {
   const DashboardStore = {
     currentView: 'landing', // 'landing' | 'detail' | 'sources'
     currentPlantId: 'rc_energy', // 'ensamble' | 'fa' | 'rc_energy'
+    // 'demo': plantas de ejemplo (sin backend). 'pipeline': plantas leídas de /api/datos/index.json.
+    dataMode: 'demo',
+    // Planta cuyo período controla el filtro global en la vista principal.
+    landingPlantId: 'fa',
+    pipeline: { online: false, excel: null, loads: [], runningJobId: null },
+    // Corte común de la vista general (modo pipeline): mes que tienen todas las plantas.
+    globalPeriod: null,
     faultAcknowledged: false,
     selectedPeriod: null,
 
@@ -285,7 +293,7 @@ import {
     const upperConsumptionRange = hasNumericValue(latest.rangos?.consumo?.rango_max)
       ? Number(latest.rangos.consumo.rango_max)
       : null;
-    const previousAlerts = deriveAnalyticalAlerts(analytics.processes, previous.fecha).length;
+    const previousAlerts = new Set(deriveAnalyticalAlerts(analytics.processes, previous.fecha).map(alert => alert.proceso)).size;
     const processColors = ['purple', 'purple-light', 'purple-dark'];
 
     if (options.useFyaIdentity) {
@@ -307,10 +315,12 @@ import {
     plant.deviationPct = hasNumericValue(latest.desviacion_ppto) ? Number(latest.desviacion_ppto) * 100 : null;
     plant.productionUnits = hasNumericValue(latest.produccion) ? Math.round(Number(latest.produccion)) : null;
     plant.productionType = getIntensityDenominator(analytics.intensityUnit) + ' producidas · corte mensual';
-    plant.alertCount = analytics.alerts.length;
-    plant.alertSnippet = analytics.alerts.length
-      ? analytics.alerts.length + ' alertas analíticas en el corte seleccionado'
-      : 'Intensidad energética dentro del rango esperado';
+    // Alertas por proceso (ver deriveAnalyticalAlerts); un proceso puede tener dos (rango y presupuesto).
+    const alertedProcesses = new Set(analytics.alerts.map(alert => alert.proceso)).size;
+    plant.alertCount = alertedProcesses;
+    plant.alertSnippet = alertedProcesses
+      ? alertedProcesses + (alertedProcesses === 1 ? ' proceso con alerta' : ' procesos con alerta') + ' en el corte seleccionado'
+      : 'Desempeño energético dentro del rango esperado';
     plant.sparklinePoints = analytics.totalSeries
       .slice(Math.max(0, analytics.selectedIndex - 11), analytics.selectedIndex + 1)
       .map(record => Number(record.consumo));
@@ -366,11 +376,485 @@ import {
 
     // The interface must remain navigable even if an optional data source is
     // slow, unavailable or blocked by the way the project was opened.
-    loadFyaEnergyDataset().then(() => {
+    initLoadSourceModal();
+    loadDashboardData().then(() => {
       renderAllViews();
+      syncPeriodFiltersForView();
       if (DashboardStore.currentView === 'sources') renderSourcesView();
     });
   });
+
+  // --- BACKEND / PIPELINE DATA ---
+  /**
+   * Con backend: todas las plantas salen de los JSON del pipeline (/api/datos).
+   * Sin backend: se conservan las plantas de demostración y el JSON local de F&A.
+   */
+  async function loadDashboardData() {
+    try {
+      await api.salud();
+    } catch (error) {
+      await loadFyaEnergyDataset();
+      updateSourcesActions();
+      showToast('Backend no disponible: se muestran datos de demostración.', 'normal');
+      return;
+    }
+    DashboardStore.pipeline.online = true;
+    try {
+      await loadPipelineDatasets();
+    } catch (error) {
+      // Sin JSON generados todavía: se puede cargar un Excel desde Fuentes de datos.
+      console.warn('No fue posible cargar los datos del pipeline.', error);
+      await loadFyaEnergyDataset();
+      showToast('No hay datos del pipeline (' + error.message + '). Carga el Excel fuente en Fuentes de datos.', 'danger');
+    }
+    await refreshSourceLoads();
+    resumeRunningLoad();
+    updateSourcesActions();
+  }
+
+  async function loadPipelineDatasets() {
+    const index = await api.indiceSeries();
+    const series = Array.isArray(index?.series) ? index.series : [];
+    const results = await Promise.allSettled(series.map(async item => {
+      const dataset = await api.serie(item.archivo);
+      return { item, analytics: normalizeEnergyDataset(dataset, item.id) };
+    }));
+
+    const plantsByName = series.reduce((count, item) => {
+      count[item.planta] = (count[item.planta] || 0) + 1;
+      return count;
+    }, {});
+    const pipelinePlants = {};
+    results.forEach((result, position) => {
+      if (result.status !== 'fulfilled') {
+        console.warn('Serie omitida: ' + series[position]?.id, result.reason);
+        return;
+      }
+      const { item, analytics } = result.value;
+      const previous = DashboardStore.plants[item.id];
+      const plant = buildPipelinePlant(item, Object.keys(pipelinePlants).length + 1, plantsByName[item.planta] > 1);
+      // Conserva el corte que el usuario tenía seleccionado si sigue existiendo.
+      if (previous?.currentPeriod) selectAnalyticsPeriod(analytics, previous.currentPeriod);
+      applyEnergyDataset(plant, analytics);
+      plant.dailyData = generateDailyCurve(Number(plant.kwh) / 30, 0.08, Boolean(plant.isCritical));
+      pipelinePlants[item.id] = plant;
+    });
+    if (!Object.keys(pipelinePlants).length) throw new Error('index.json no tiene series válidas');
+
+    const customPlants = Object.fromEntries(Object.entries(DashboardStore.plants).filter(([, plant]) => plant.isCustom));
+    DashboardStore.plants = { ...pipelinePlants, ...customPlants };
+    DashboardStore.dataMode = 'pipeline';
+    DashboardStore.pipeline.generatedAt = index.generado;
+    DashboardStore.pipeline.commonEnd = index.fecha_fin_comun;
+    if (!DashboardStore.plants[DashboardStore.currentPlantId]) {
+      DashboardStore.currentPlantId = Object.keys(pipelinePlants)[0];
+    }
+    DashboardStore.landingPlantId = pipelinePlants.fya ? 'fya' : Object.keys(pipelinePlants)[0];
+    const common = getCommonPeriods();
+    applyGlobalPeriod(common.includes(DashboardStore.globalPeriod) ? DashboardStore.globalPeriod : common.at(-1));
+    DashboardStore.sources = [
+      ...series.filter(item => pipelinePlants[item.id]).map(item => ({
+        id: 'pipeline-' + item.id,
+        name: item.archivo,
+        scope: pipelinePlants[item.id].name,
+        format: 'JSON',
+        period: formatMonthLabel(item.periodo?.inicio) + ' – ' + formatMonthLabel(item.periodo?.fin),
+        status: 'validated',
+        href: api.dataUrl(item.archivo),
+        origin: 'Generado por el pipeline desde el Excel fuente',
+        importedAt: formatGeneratedDate(index.generado)
+      })),
+      ...DashboardStore.sources.filter(source => source.id.startsWith('plant-source-'))
+    ];
+  }
+
+  function buildPipelinePlant(item, number, showService) {
+    const serviceLabel = item.servicio === 'gas' ? 'Gas' : 'Energía';
+    const name = showService ? item.planta + ' · ' + serviceLabel : item.planta;
+    return {
+      id: item.id,
+      number: String(number),
+      name,
+      fullName: 'Planta ' + name,
+      tag: item.id.toUpperCase(),
+      status: 'normal',
+      statusLabel: 'Datos en rango',
+      isCritical: false,
+      isPipeline: true,
+      service: item.servicio,
+      unit: item.unidad,
+      sensorsCount: 0,
+      nodeUri: 'PIPELINE-' + item.id.toUpperCase(),
+      sourceFileName: item.archivo,
+      costCop: 0,
+      previous: { costCop: 0 },
+      gas: {
+        flowHigh: 'Sin telemetría de gas',
+        flowTot: 'Serie mensual del pipeline',
+        trend: [0, 0, 0, 0, 0, 0, 0]
+      },
+      dailyData: []
+    };
+  }
+
+  async function refreshSourceLoads() {
+    const [excel, loads] = await Promise.all([
+      api.fuenteActual().catch(() => null),
+      api.historialCargas().catch(() => [])
+    ]);
+    DashboardStore.pipeline.excel = excel;
+    DashboardStore.pipeline.loads = Array.isArray(loads) ? loads : [];
+    if (excel) {
+      DashboardStore.sources = DashboardStore.sources.filter(source => source.id !== 'pipeline-excel');
+      DashboardStore.sources.unshift({
+        id: 'pipeline-excel',
+        name: excel.archivo,
+        scope: (excel.validacion?.hojas?.length || 0) + ' hojas · todas las plantas',
+        format: 'EXCEL',
+        period: 'Modificado ' + formatGeneratedDate(excel.modificado),
+        status: excel.validacion?.ok ? 'validated' : 'registered',
+        href: '',
+        origin: 'Excel fuente vigente · entrada del pipeline',
+        binary: true,
+        importedAt: formatGeneratedDate(excel.modificado)
+      });
+    }
+  }
+
+  /** Si al abrir el dashboard ya hay una carga en curso, sigue su progreso. */
+  async function resumeRunningLoad() {
+    const current = await api.jobActual().catch(() => null);
+    if (current?.estado === 'corriendo') followLoadJob(current.id);
+  }
+
+  /** Consulta el job hasta que termine (un solo seguimiento por job) y recarga los datos al final. */
+  async function followLoadJob(jobId) {
+    if (DashboardStore.pipeline.runningJobId === jobId) return;
+    DashboardStore.pipeline.runningJobId = jobId;
+    updateSourcesActions();
+    try {
+      const final = await api.esperarJob(jobId, renderLoadProgress);
+      if (final.estado === 'ok') {
+        await loadPipelineDatasets();
+        showToast('✓ Datos fuente actualizados: indicadores y pronósticos recalculados.', 'success');
+      } else {
+        showToast('La carga falló y se restauró la versión anterior: ' + (final.error || 'error desconocido'), 'danger');
+      }
+      await refreshSourceLoads();
+      renderAllViews();
+      syncPeriodFiltersForView();
+      return final;
+    } finally {
+      DashboardStore.pipeline.runningJobId = null;
+      updateSourcesActions();
+    }
+  }
+
+  function updateSourcesActions() {
+    const online = DashboardStore.pipeline.online;
+    const pipeline = DashboardStore.dataMode === 'pipeline';
+    const loadButton = document.getElementById('btn-sources-load-data');
+    const templateLink = document.getElementById('link-sources-template');
+    const addPlantButton = document.getElementById('btn-sources-add-plant');
+    if (loadButton) {
+      loadButton.hidden = !online;
+      loadButton.textContent = DashboardStore.pipeline.runningJobId ? '⟳ Carga en curso…' : '⇪ Cargar datos fuente';
+    }
+    if (templateLink) templateLink.hidden = !online;
+    // Con backend, una planta nueva es una hoja nueva del Excel fuente.
+    if (addPlantButton) addPlantButton.hidden = pipeline;
+    const openAddPlant = document.getElementById('btn-open-add-plant');
+    if (openAddPlant) openAddPlant.hidden = pipeline;
+  }
+
+  function renderSourceLoads() {
+    const card = document.getElementById('sources-loads-card');
+    const body = document.getElementById('loads-table-body');
+    if (!card || !body) return;
+    card.hidden = !DashboardStore.pipeline.online;
+    const excel = DashboardStore.pipeline.excel;
+    setElementText('sources-excel-summary', excel
+      ? 'Vigente: ' + excel.archivo + ' · ' + (excel.validacion?.hojas || []).map(sheet => sheet.hoja).join(', ')
+      : 'Sin Excel fuente');
+    body.replaceChildren();
+    const loads = DashboardStore.pipeline.loads;
+    if (!loads.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 4;
+      cell.textContent = 'Aún no hay cargas desde el dashboard. El Excel vigente se cargó directamente en el servidor.';
+      row.appendChild(cell);
+      body.appendChild(row);
+      return;
+    }
+    loads.forEach(load => {
+      const row = document.createElement('tr');
+      const when = document.createElement('td');
+      when.textContent = formatGeneratedDate(load.inicio);
+      const file = document.createElement('td');
+      file.textContent = load.archivo;
+      const changes = document.createElement('td');
+      changes.textContent = summarizeChanges(load.cambios);
+      const status = document.createElement('td');
+      const badge = document.createElement('span');
+      badge.className = 'source-status-badge ' + (load.estado === 'ok' ? 'validated' : 'registered');
+      badge.textContent = load.estado === 'ok' ? '● Aplicada' : load.estado === 'error' ? '● Falló (restaurada)' : '● En curso';
+      if (load.error) badge.title = load.error;
+      status.appendChild(badge);
+      row.append(when, file, changes, status);
+      body.appendChild(row);
+    });
+  }
+
+  function summarizeChanges(cambios) {
+    if (!cambios) return '—';
+    if (cambios.sin_cambios) return 'Sin cambios en los datos';
+    const parts = [];
+    if (cambios.plantas_nuevas?.length) parts.push('Nuevas: ' + cambios.plantas_nuevas.join(', '));
+    if (cambios.plantas_faltantes?.length) parts.push('Retiradas: ' + cambios.plantas_faltantes.join(', '));
+    const newMonths = (cambios.series || []).reduce((sum, serie) => sum + serie.meses_nuevos.length, 0);
+    const modified = (cambios.series || []).reduce((sum, serie) => sum + serie.n_modificados, 0);
+    if (newMonths) parts.push(pluralMonths(newMonths, 'nuevo'));
+    if (modified) parts.push(pluralMonths(modified, 'modificado'));
+    return parts.join(' · ') || 'Sin cambios en los totales';
+  }
+
+  function pluralMonths(count, adjective) {
+    return count === 1 ? '1 mes ' + adjective : count + ' meses ' + adjective + 's';
+  }
+
+  // --- MODAL: CARGAR DATOS FUENTE ---
+  const LOAD_PHASES = [
+    ['limpieza', 'Limpieza'],
+    ['backtest', 'Backtest'],
+    ['modelos', 'Modelos'],
+    ['monitoreo', 'Monitoreo'],
+    ['listo', 'Listo']
+  ];
+
+  function initLoadSourceModal() {
+    const modal = document.getElementById('modal-load-source');
+    const fileInput = document.getElementById('load-file-input');
+    const dropzone = document.getElementById('load-file-dropzone');
+    if (!modal || !fileInput) return;
+    const buttons = {
+      validate: document.getElementById('btn-validate-load-source'),
+      apply: document.getElementById('btn-apply-load-source'),
+      back: document.getElementById('btn-back-load-source'),
+      cancel: document.getElementById('btn-cancel-load-source')
+    };
+    let pending = null;
+
+    const showError = message => {
+      const error = document.getElementById('load-source-error');
+      if (!error) return;
+      error.textContent = message || '';
+      error.hidden = !message;
+    };
+
+    const showStep = step => {
+      ['select', 'review', 'progress'].forEach(name => {
+        const section = document.getElementById('load-step-' + name);
+        if (section) section.hidden = name !== step;
+      });
+      const canApply = step === 'review' && pending?.validacion?.ok;
+      buttons.validate.hidden = step !== 'select';
+      buttons.apply.hidden = !canApply;
+      buttons.back.hidden = step !== 'review';
+      buttons.cancel.textContent = step === 'progress' ? 'Cerrar' : 'Cancelar';
+    };
+
+    const updateFileState = () => {
+      const file = fileInput.files?.[0];
+      document.getElementById('load-file-empty-state').hidden = Boolean(file);
+      document.getElementById('load-file-selected-state').hidden = !file;
+      setElementText('load-selected-file-name', file?.name || '');
+      setElementText('load-selected-file-meta', file ? formatFileSize(file.size) + ' · listo para validar' : '');
+      buttons.validate.disabled = !file;
+      showError('');
+    };
+
+    const reset = () => {
+      pending = null;
+      fileInput.value = '';
+      updateFileState();
+      showStep('select');
+    };
+
+    const open = () => {
+      showError('');
+      modal.classList.add('open');
+      if (DashboardStore.pipeline.runningJobId) {
+        showStep('progress');
+        api.job(DashboardStore.pipeline.runningJobId).then(renderLoadProgress).catch(() => {});
+      } else {
+        reset();
+      }
+    };
+
+    const close = () => {
+      modal.classList.remove('open');
+    };
+
+    document.getElementById('btn-sources-load-data')?.addEventListener('click', open);
+    document.getElementById('btn-close-load-source')?.addEventListener('click', close);
+    buttons.cancel.addEventListener('click', close);
+    modal.addEventListener('click', event => {
+      if (event.target === modal) close();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && modal.classList.contains('open')) close();
+    });
+
+    fileInput.addEventListener('change', updateFileState);
+    ['btn-select-load-file', 'btn-replace-load-file'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', () => fileInput.click());
+    });
+    ['dragenter', 'dragover'].forEach(name => dropzone?.addEventListener(name, event => {
+      event.preventDefault();
+      dropzone.classList.add('drag-active');
+    }));
+    ['dragleave', 'drop'].forEach(name => dropzone?.addEventListener(name, event => {
+      event.preventDefault();
+      dropzone.classList.remove('drag-active');
+    }));
+    dropzone?.addEventListener('drop', event => {
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+      updateFileState();
+    });
+
+    buttons.back.addEventListener('click', reset);
+
+    buttons.validate.addEventListener('click', async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      buttons.validate.disabled = true;
+      buttons.validate.textContent = 'Validando…';
+      showError('');
+      try {
+        pending = await api.validarFuente(file);
+        renderLoadReview(pending);
+        showStep('review');
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        buttons.validate.disabled = false;
+        buttons.validate.textContent = 'Validar archivo';
+      }
+    });
+
+    buttons.apply.addEventListener('click', async () => {
+      if (!pending?.token) return;
+      buttons.apply.disabled = true;
+      showError('');
+      try {
+        const job = await api.aplicarFuente(pending.token);
+        pending = null;
+        showStep('progress');
+        renderLoadProgress(job);
+        followLoadJob(job.id);
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        buttons.apply.disabled = false;
+      }
+    });
+  }
+
+  function renderLoadReview(result) {
+    const validation = result.validacion || {};
+    const fillList = (id, items) => {
+      const list = document.getElementById(id);
+      if (!list) return;
+      list.replaceChildren(...items.map(item => {
+        const li = document.createElement('li');
+        li.textContent = (item.hoja ? item.hoja + (item.fila ? ' · fila ' + item.fila : '') + ': ' : '') + item.mensaje;
+        return li;
+      }));
+    };
+    const errors = validation.errores || [];
+    const warnings = validation.avisos || [];
+    document.getElementById('load-review-errors').hidden = !errors.length;
+    document.getElementById('load-review-warnings').hidden = !warnings.length;
+    document.getElementById('load-review-ok').hidden = !validation.ok;
+    fillList('load-review-errors-list', errors);
+    fillList('load-review-warnings-list', warnings);
+    if (!validation.ok) return;
+
+    const sheets = document.getElementById('load-review-sheets');
+    sheets.replaceChildren(...(validation.hojas || []).map(sheet => {
+      const row = document.createElement('tr');
+      [sheet.hoja, sheet.planta, sheet.servicio === 'gas' ? 'Gas (m³)' : 'Energía (kWh)',
+        formatMonthLabel(sheet.desde) + ' – ' + formatMonthLabel(sheet.hasta) + ' · ' + sheet.meses + ' meses',
+        sheet.con_costo ? 'Sí' : 'No'].forEach(text => {
+        const cell = document.createElement('td');
+        cell.textContent = text;
+        row.appendChild(cell);
+      });
+      return row;
+    }));
+
+    const changes = result.cambios || {};
+    const items = [];
+    const addItem = (text, className = '') => {
+      const li = document.createElement('li');
+      li.textContent = text;
+      if (className) li.className = className;
+      items.push(li);
+    };
+    if (changes.sin_cambios) addItem('El archivo tiene los mismos datos que el Excel vigente.');
+    (changes.plantas_nuevas || []).forEach(id => addItem('Planta nueva: ' + id, 'is-new'));
+    (changes.plantas_faltantes || []).forEach(id => addItem('Ya no está en el archivo: ' + id + ' (dejará de mostrarse)', 'is-missing'));
+    (changes.series || []).forEach(serie => {
+      const parts = [];
+      if (serie.meses_nuevos.length) parts.push(pluralMonths(serie.meses_nuevos.length, 'nuevo') + ' (' + serie.meses_nuevos.map(formatMonthLabel).join(', ') + ')');
+      if (serie.meses_eliminados.length) parts.push(pluralMonths(serie.meses_eliminados.length, 'eliminado'));
+      if (serie.n_modificados) {
+        const detail = serie.modificados.slice(0, 3).map(item => formatMonthLabel(item.fecha) + ': '
+          + formatNumber(Math.round(item.consumo_antes ?? 0)) + ' → ' + formatNumber(Math.round(item.consumo_despues ?? 0)));
+        parts.push(pluralMonths(serie.n_modificados, 'modificado') + ' (' + detail.join('; ') + (serie.n_modificados > 3 ? '; …' : '') + ')');
+      }
+      if (parts.length) addItem(serie.id + ': ' + parts.join(' · '));
+    });
+    if (!items.length) addItem('Sin cambios en los totales mensuales.');
+    document.getElementById('load-review-changes').replaceChildren(...items);
+  }
+
+  function renderLoadProgress(job) {
+    const list = document.getElementById('load-phases');
+    if (!list || !job) return;
+    const currentIndex = LOAD_PHASES.findIndex(([key]) => key === job.fase);
+    const failed = job.estado === 'error';
+    list.replaceChildren(...LOAD_PHASES.map(([key, label], index) => {
+      const li = document.createElement('li');
+      li.textContent = label;
+      if (job.estado === 'ok' || index < currentIndex) li.className = 'is-done';
+      else if (index === currentIndex && !failed) li.className = 'is-active';
+      else if (failed && index === Math.max(currentIndex, 0)) li.className = 'is-failed';
+      return li;
+    }));
+    const log = document.getElementById('load-log');
+    if (log) log.textContent = (job.log || []).join('\n');
+    const result = document.getElementById('load-result');
+    if (result) {
+      result.hidden = job.estado === 'corriendo';
+      result.className = 'load-block ' + (failed ? 'load-block-danger' : 'load-block-ok');
+      result.replaceChildren();
+      if (job.estado !== 'corriendo') {
+        const title = document.createElement('strong');
+        title.textContent = failed ? 'La carga falló' : 'Carga completada';
+        const text = document.createElement('span');
+        text.textContent = failed
+          ? (job.error || 'Error desconocido') + '. Se restauraron el Excel y los datos anteriores.'
+          : 'El dashboard ya muestra los datos recalculados de ' + job.archivo + '.';
+        result.append(title, text);
+      }
+    }
+  }
 
   // --- NAVIGATION CONTROLLER ---
   function initNavigation() {
@@ -620,6 +1104,12 @@ import {
     if (!monthSelect || !yearSelect || !plant?.analytics) return;
 
     const period = yearSelect.value + '-' + String(Number(monthSelect.value) + 1).padStart(2, '0');
+    if (plant.id === '__global__') {
+      applyGlobalPeriod(period);
+      renderAllViews();
+      if (showFeedback) showToast('Todas las plantas actualizadas al corte ' + formatMonthLabel(period) + '.', 'success');
+      return;
+    }
     if (!selectAnalyticsPeriod(plant.analytics, period)) {
       if (showFeedback) showToast('Ese corte no tiene un mes anterior comparable para ' + plant.name + '.', 'danger');
       return;
@@ -637,10 +1127,19 @@ import {
       const current = DashboardStore.plants[DashboardStore.currentPlantId];
       return current?.analytics ? current : null;
     }
-    return DashboardStore.plants.fa?.analytics ? DashboardStore.plants.fa : null;
+    if (DashboardStore.dataMode === 'pipeline') return getGlobalPeriodFilter();
+    const landing = DashboardStore.plants[DashboardStore.landingPlantId];
+    return landing?.analytics ? landing : null;
   }
 
   function syncPeriodFiltersForView() {
+    if (DashboardStore.dataMode === 'pipeline' && DashboardStore.currentView !== 'detail') {
+      const outOfSync = getPipelinePlants().some(item => item.currentPeriod !== DashboardStore.globalPeriod);
+      if (outOfSync) {
+        applyGlobalPeriod(DashboardStore.globalPeriod);
+        renderAllViews();
+      }
+    }
     const plant = getPeriodFilterPlant();
     if (plant) {
       configurePeriodFilters(plant);
@@ -793,9 +1292,19 @@ import {
         drawerList.appendChild(button);
       }
     });
+
+    [landingGrid, sidebarList, drawerList].forEach(container => {
+      container?.querySelectorAll('[data-plant-id]').forEach(element => {
+        if (!DashboardStore.plants[element.getAttribute('data-plant-id')]) element.remove();
+      });
+    });
   }
 
   function recalculateGlobalMetrics() {
+    if (DashboardStore.dataMode === 'pipeline') {
+      recalculatePipelineGlobalMetrics();
+      return;
+    }
     const plants = Object.values(DashboardStore.plants);
     const plantEnergy = plants.reduce((sum, plant) => sum + Number(plant.kwh || 0), 0);
     const hasCompleteBudget = plants.every(plant => hasNumericValue(plant.budgetKwh));
@@ -812,6 +1321,335 @@ import {
       ? ((DashboardStore.global.totalEnergyKwh - DashboardStore.global.budgetEnergyKwh) / DashboardStore.global.budgetEnergyKwh) * 100
       : null;
     DashboardStore.global.alertCount = plants.reduce((sum, plant) => sum + Number(plant.alertCount || 0), 0);
+  }
+
+  // --- KPIs GLOBALES (modo pipeline) ---
+  // Corte: un mes que tienen todas las plantas. Referencia: promedio mensual del año anterior al corte
+  // (sin los periodos excluidos, p. ej. COVID), usando solo los meses comparables de cada indicador.
+  // Semáforo: verde si igual o mejor que la referencia; ámbar si peor pero hasta NORMAL_MARGIN; rojo si
+  // peor más allá de ese margen. Una planta "con alerta" tiene un desempeño energético más de
+  // NORMAL_MARGIN peor que el de su año anterior.
+  const NORMAL_MARGIN = 0.10;
+  const PLANT_REFERENCE_MIN_MONTHS = 6;
+
+  function getPipelinePlants() {
+    return Object.values(DashboardStore.plants).filter(plant => plant.isPipeline && plant.analytics);
+  }
+
+  /** Meses con fila total (y mes anterior comparable) en todas las plantas del pipeline. */
+  function getCommonPeriods() {
+    const plants = getPipelinePlants();
+    if (!plants.length) return [];
+    return plants
+      .map(plant => plant.analytics.availablePeriods)
+      .reduce((common, periods) => common.filter(period => periods.includes(period)));
+  }
+
+  function applyGlobalPeriod(period) {
+    if (!period) return;
+    DashboardStore.globalPeriod = period;
+    DashboardStore.selectedPeriod = period;
+    getPipelinePlants().forEach(plant => {
+      if (selectAnalyticsPeriod(plant.analytics, period)) applyEnergyDataset(plant, plant.analytics);
+    });
+  }
+
+  /** Planta virtual para el filtro de período de la vista general: ofrece solo los meses comunes. */
+  function getGlobalPeriodFilter() {
+    const periods = getCommonPeriods();
+    if (!periods.length) return null;
+    return {
+      id: '__global__',
+      name: 'Todas las plantas',
+      currentPeriod: DashboardStore.globalPeriod || periods.at(-1),
+      analytics: { availablePeriods: periods, latestAvailable: { fecha: periods.at(-1) } }
+    };
+  }
+
+  function isExcludedPeriod(plant, period) {
+    const excluded = plant.analytics?.parameters?.periodos_excluidos || [];
+    return excluded.some(([start, end]) => period >= String(start).slice(0, 7) && period <= String(end).slice(0, 7));
+  }
+
+  /** Meses del año anterior al corte que no están excluidos. */
+  function referencePeriods(plant, period) {
+    const year = Number(period.slice(0, 4)) - 1;
+    return Array.from({ length: 12 }, (_, index) => year + '-' + String(index + 1).padStart(2, '0'))
+      .filter(month => !isExcludedPeriod(plant, month));
+  }
+
+  function totalRecord(plant, period) {
+    return plant.analytics.totalSeries.find(record => record.fecha === period) || null;
+  }
+
+  /** Desempeño energético de referencia de la planta: promedio mensual del año anterior al corte. */
+  function performanceReference(plant, period) {
+    const values = referencePeriods(plant, period)
+      .map(month => totalRecord(plant, month)?.intensidad)
+      .filter(hasNumericValue)
+      .map(Number);
+    return values.length >= PLANT_REFERENCE_MIN_MONTHS ? values.reduce((a, b) => a + b, 0) / values.length : null;
+  }
+
+  /**
+   * Meta de desempeño (presupuesto, kWh/ECU) de la planta en un mes: la del Excel; si falta y el mes es
+   * posterior al primer presupuesto de la planta, su meta promedio. null antes del primer presupuesto
+   * o si la planta nunca tuvo presupuesto.
+   */
+  function budgetTarget(plant, period, record) {
+    if (hasNumericValue(record?.intensidad_ppto)) return Number(record.intensidad_ppto);
+    const budgets = plant.analytics.totalSeries.filter(item => hasNumericValue(item.intensidad_ppto));
+    if (!budgets.length || period < budgets[0].fecha) return null;
+    return budgets.reduce((sum, item) => sum + Number(item.intensidad_ppto), 0) / budgets.length;
+  }
+
+  /** Plantas de energía con presupuesto en algún mes; solo ellas entran en la desviación global. */
+  function getBudgetPlants() {
+    return getPipelinePlants().filter(plant => plant.unit === 'kWh'
+      && plant.analytics.totalSeries.some(item => hasNumericValue(item.intensidad_ppto)));
+  }
+
+  /** Totales de todas las plantas en un mes; null si alguna planta no tiene ese mes. */
+  function globalSnapshot(period) {
+    const plants = getPipelinePlants();
+    const records = plants.map(plant => totalRecord(plant, period));
+    if (!plants.length || records.some(record => !record)) return null;
+    const energy = plants.map((plant, index) => [plant, records[index]]).filter(([plant]) => plant.unit === 'kWh');
+    const energyKwh = energy.reduce((sum, [, record]) => sum + Number(record.consumo || 0), 0);
+    const cost = records.reduce((sum, record) => sum + (hasNumericValue(record.costo_total) ? Number(record.costo_total) : 0), 0);
+    // Plantas con costo en este mes: la referencia de costo solo compara meses con las mismas plantas.
+    const costKey = plants.filter((plant, index) => hasNumericValue(records[index].costo_total)).map(plant => plant.id).join(',');
+    // Desviación: consumo vs presupuesto (producción × meta) solo de las plantas con presupuesto.
+    const budgetRows = getBudgetPlants().map(plant => {
+      const record = records[plants.indexOf(plant)];
+      return { record, target: budgetTarget(plant, period, record) };
+    });
+    const budgetComplete = budgetRows.length > 0 && budgetRows.every(({ record, target }) => (
+      hasNumericValue(record.produccion) && hasNumericValue(target)
+    ));
+    const budget = budgetComplete
+      ? budgetRows.reduce((sum, { record, target }) => sum + Number(record.produccion) * target, 0)
+      : null;
+    const budgetedKwh = budgetRows.reduce((sum, { record }) => sum + Number(record.consumo || 0), 0);
+    return {
+      period,
+      energyKwh,
+      cost: costKey ? cost : null,
+      costKey,
+      budgetKwh: budget,
+      deviationPct: budget ? (budgetedKwh - budget) / budget * 100 : null
+    };
+  }
+
+  /**
+   * Índice de desempeño energético global (ISO 50001 / 50006): consumo real / consumo esperado, con
+   * consumo esperado = Σ producción del mes × desempeño de referencia de cada planta. Solo plantas de
+   * energía (kWh) con producción y referencia. 1,05 = se consumió 5 % más de lo esperado para lo producido.
+   */
+  function globalPerformance(period) {
+    const rows = getPipelinePlants().filter(plant => plant.unit === 'kWh').map(plant => {
+      const record = totalRecord(plant, period);
+      const reference = performanceReference(plant, period);
+      return { plant, record, reference };
+    }).filter(({ record, reference }) => record && hasNumericValue(reference)
+      && hasNumericValue(record.produccion) && Number(record.produccion) > 0);
+    if (!rows.length) return null;
+    const actual = rows.reduce((sum, { record }) => sum + Number(record.consumo), 0);
+    const expected = rows.reduce((sum, { record, reference }) => sum + Number(record.produccion) * reference, 0);
+    return { index: actual / expected, actual, expected, plants: rows.map(({ plant }) => plant.name) };
+  }
+
+  /** Plantas cuyo desempeño del corte es más de NORMAL_MARGIN peor que el de su año anterior. */
+  function plantsWithAlert(period) {
+    return getPipelinePlants().map(plant => {
+      const reference = performanceReference(plant, period);
+      const value = Number(totalRecord(plant, period)?.intensidad);
+      return { plant, change: reference && Number.isFinite(value) ? value / reference - 1 : null };
+    }).filter(item => item.change !== null && item.change > NORMAL_MARGIN);
+  }
+
+  /**
+   * Promedio mensual de los indicadores globales en el año anterior al corte. Cada indicador usa solo
+   * sus meses comparables (costo: mismas plantas con costo; desviación: meses con presupuesto).
+   */
+  function globalReference(period, current) {
+    const plants = getPipelinePlants();
+    if (!plants.length) return {};
+    const snapshots = referencePeriods(plants[0], period).map(globalSnapshot).filter(Boolean);
+    const average = items => items.length
+      ? { value: items.reduce((sum, item) => sum + item.value, 0) / items.length, periods: items.map(item => item.period) }
+      : null;
+    const pick = (list, read) => list.map(item => ({ period: item.period, value: read(item) }));
+    return {
+      year: Number(period.slice(0, 4)) - 1,
+      energyKwh: average(pick(snapshots, item => item.energyKwh)),
+      cost: average(pick(snapshots.filter(item => current?.costKey && item.costKey === current.costKey), item => item.cost)),
+      deviationPct: average(pick(snapshots.filter(item => hasNumericValue(item.deviationPct)), item => item.deviationPct))
+    };
+  }
+
+  /** "promedio 2025" o, si faltan meses, "promedio oct–dic 2025". */
+  function referenceLabel(reference, year) {
+    if (!reference) return 'promedio ' + year;
+    const periods = reference.periods;
+    if (periods.length >= 12) return 'promedio ' + year;
+    const month = value => formatMonthLabel(value).split(' ')[0];
+    return 'promedio ' + (periods.length === 1 ? month(periods[0]) : month(periods[0]) + '–' + month(periods.at(-1))) + ' ' + year;
+  }
+
+  /** Semáforo para indicadores donde más es peor. `ratio` = actual / referencia. */
+  function trafficLight(ratio) {
+    if (!hasNumericValue(ratio)) return 'neutral';
+    if (ratio <= 1) return 'positive';
+    return ratio <= 1 + NORMAL_MARGIN ? 'warning' : 'negative';
+  }
+
+  /** $1.214 M (millones de pesos, con separador de miles). */
+  function formatMillionsCop(value) {
+    return '$' + formatNumber(Math.round(Number(value) / 1e6)) + ' M';
+  }
+
+  function moreOrLess(changePct) {
+    return formatDecimal(Math.abs(changePct), 1) + '% ' + (changePct >= 0 ? 'más' : 'menos');
+  }
+
+  function recalculatePipelineGlobalMetrics() {
+    const period = DashboardStore.globalPeriod;
+    const current = period ? globalSnapshot(period) : null;
+    const global = DashboardStore.global;
+    global.snapshot = current;
+    global.reference = period ? globalReference(period, current) : {};
+    global.performance = period ? globalPerformance(period) : null;
+    global.plantsWithAlert = period ? plantsWithAlert(period) : [];
+    global.totalEnergyKwh = current ? Math.round(current.energyKwh) : 0;
+    global.energyCostCop = hasNumericValue(current?.cost) ? Math.round(current.cost) : null;
+    global.budgetDeviationPct = current?.deviationPct ?? null;
+    global.alertCount = global.plantsWithAlert.length;
+  }
+
+  /** Pinta una tarjeta: valor, frase explicativa, línea pequeña y estado (color). */
+  function renderKpiCard(prefix, { value, unit = '', note = '', baseline = '', state = 'neutral', title = '' }) {
+    setElementText('landing-global-' + prefix, value);
+    setElementText('landing-global-' + prefix + '-unit', unit);
+    const trend = document.getElementById('landing-global-' + prefix + '-trend');
+    if (trend) trend.hidden = true;
+    const noteElement = document.getElementById('landing-global-' + prefix + '-note');
+    if (noteElement) {
+      noteElement.classList.add('kpi-explainer');
+      noteElement.textContent = note;
+    }
+    setElementText('landing-global-' + prefix + '-baseline', baseline);
+    const card = document.getElementById('landing-global-' + prefix)?.closest('.kpi-card');
+    if (card) {
+      card.classList.add('kpi-card-tinted');
+      card.title = title;
+      card.classList.remove('state-positive', 'state-negative', 'state-neutral', 'state-warning');
+      card.classList.add('state-' + state);
+    }
+  }
+
+  const TRAFFIC_LIGHT_HELP = 'Verde: igual o mejor que la referencia. Ámbar: peor, pero hasta '
+    + (NORMAL_MARGIN * 100) + ' % (dentro de lo normal). Rojo: más de ' + (NORMAL_MARGIN * 100) + ' % peor.';
+
+  function renderPipelineLandingMetrics() {
+    const g = DashboardStore.global;
+    const current = g.snapshot;
+    const ref = g.reference || {};
+    const year = ref.year;
+    const monthLabel = formatMonthLabel(DashboardStore.globalPeriod);
+    const performanceCard = document.getElementById('landing-kpi-performance-card');
+    if (performanceCard) performanceCard.hidden = false;
+
+    // 1. Consumo de energía (kWh, plantas eléctricas).
+    const energyRatio = ref.energyKwh ? g.totalEnergyKwh / ref.energyKwh.value : null;
+    renderKpiCard('kwh', {
+      value: formatNumber(g.totalEnergyKwh),
+      unit: 'kWh',
+      note: energyRatio ? 'Se consumió ' + moreOrLess((energyRatio - 1) * 100) + ' que el ' + referenceLabel(ref.energyKwh, year)
+        : 'Sin datos de ' + year + ' para comparar',
+      baseline: ref.energyKwh ? referenceLabel(ref.energyKwh, year).replace(/^p/, 'P') + ': ' + formatNumber(Math.round(ref.energyKwh.value)) + ' kWh' : monthLabel,
+      state: trafficLight(energyRatio),
+      title: 'Consumo eléctrico de las plantas en ' + monthLabel + ' frente al promedio mensual de ' + year + '. ' + TRAFFIC_LIGHT_HELP
+    });
+
+    // 2. Gasto en energía y gas (COP).
+    const costRatio = ref.cost && hasNumericValue(g.energyCostCop) ? g.energyCostCop / ref.cost.value : null;
+    renderKpiCard('cost', {
+      value: hasNumericValue(g.energyCostCop) ? formatMillionsCop(g.energyCostCop) : 'n.a.',
+      unit: 'COP',
+      note: costRatio ? 'Se gastó ' + moreOrLess((costRatio - 1) * 100) + ' que el ' + referenceLabel(ref.cost, year)
+        : hasNumericValue(g.energyCostCop) ? 'Sin costos de ' + year + ' para comparar' : 'Sin costos en ' + monthLabel,
+      baseline: ref.cost ? referenceLabel(ref.cost, year).replace(/^p/, 'P') + ': ' + formatMillionsCop(ref.cost.value) + ' COP' : '',
+      state: trafficLight(costRatio),
+      title: 'Costo de energía y gas en ' + monthLabel + ' frente al promedio mensual de ' + year
+        + ' (solo meses con costo de las mismas plantas). ' + TRAFFIC_LIGHT_HELP
+    });
+
+    // 3. Desempeño energético global (índice ISO 50001).
+    const performance = g.performance;
+    renderKpiCard('performance', {
+      value: performance ? formatDecimal(Math.abs(performance.index - 1) * 100, 1) + '%' : 'n.a.',
+      unit: performance ? (performance.index > 1 ? 'peor' : 'mejor') : '',
+      note: performance
+        ? 'Por unidad producida se consumió ' + moreOrLess((performance.index - 1) * 100) + ' que en ' + year
+        : 'Sin desempeño de referencia de ' + year,
+      baseline: performance
+        ? 'Real ' + formatNumber(Math.round(performance.actual)) + ' · esperado ' + formatNumber(Math.round(performance.expected)) + ' kWh'
+        : '',
+      state: trafficLight(performance?.index),
+      title: 'Índice de desempeño energético (ISO 50001): consumo real / consumo esperado, con consumo esperado = '
+        + 'producción del mes × desempeño promedio de ' + year + ' de cada planta (' + (performance?.plants.join(', ') || '—')
+        + '). No depende de la mezcla de producción entre plantas. ' + TRAFFIC_LIGHT_HELP
+    });
+
+    // 4. Desviación de presupuesto.
+    renderKpiCard('deviation', pipelineDeviationCard(current, ref, year, monthLabel));
+
+    // 5. Plantas con alerta.
+    const withAlert = g.plantsWithAlert || [];
+    renderKpiCard('alerts', {
+      value: String(withAlert.length),
+      unit: withAlert.length === 1 ? 'planta con alerta' : 'plantas con alerta',
+      note: 'Desempeño energético más de ' + (NORMAL_MARGIN * 100) + ' % peor que su promedio ' + year,
+      baseline: withAlert.length
+        ? withAlert.map(item => item.plant.name + ' (+' + formatDecimal(item.change * 100, 0) + '%)').join(' · ')
+        : 'Todas dentro de su desempeño de referencia',
+      state: withAlert.length ? 'negative' : 'positive',
+      title: 'Plantas cuyo desempeño energético (consumo por unidad producida) en ' + monthLabel
+        + ' supera en más de ' + (NORMAL_MARGIN * 100) + ' % su promedio mensual de ' + year + '.'
+    });
+  }
+
+  /**
+   * Desviación de presupuesto: el número va sin signo y una frase dice si se gastó más o menos que el
+   * presupuesto del mes. Color: verde si se gastó menos; ámbar si se gastó más pero no más que el
+   * promedio del año anterior (o no hay con qué comparar); rojo si se gastó más que ese promedio.
+   */
+  function pipelineDeviationCard(current, ref, year, monthLabel) {
+    const deviation = current?.deviationPct;
+    const budgetNames = getBudgetPlants().map(plant => plant.name).join(', ');
+    const reference = ref.deviationPct;
+    const title = 'Presupuesto = producción del mes × meta de desempeño de cada planta (' + budgetNames + '). '
+      + 'Verde: se gastó menos que el presupuesto. Ámbar: se gastó más, pero no más que el ' + referenceLabel(reference, year)
+      + (reference ? ' (' + formatSigned(reference.value, 1) + '%)' : '') + '. Rojo: se gastó más que ese promedio.';
+    if (!hasNumericValue(deviation)) {
+      return {
+        value: 'n.a.',
+        note: 'Sin presupuesto en ' + monthLabel,
+        baseline: budgetNames ? 'Plantas con presupuesto: ' + budgetNames : '',
+        title
+      };
+    }
+    const over = deviation > 0;
+    return {
+      value: formatDecimal(Math.abs(deviation), 1) + '%',
+      note: Math.abs(deviation) < 0.05
+        ? 'Se gastó lo mismo que el presupuesto del mes'
+        : 'Se gastó ' + moreOrLess(deviation) + ' que el presupuesto del mes',
+      baseline: 'Presupuesto: ' + formatNumber(Math.round(current.budgetKwh)) + ' kWh · ' + budgetNames,
+      state: !over ? 'positive' : reference && deviation > reference.value ? 'negative' : 'warning',
+      title
+    };
   }
 
   function renderPlantCounts() {
@@ -928,6 +1766,7 @@ import {
       tableBody.appendChild(row);
     });
 
+    renderSourceLoads();
     const validatedCount = DashboardStore.sources.filter(source => source.status === 'validated').length;
     setElementText('source-count-total', String(DashboardStore.sources.length));
     setElementText('source-count-validated', String(validatedCount));
@@ -1024,6 +1863,10 @@ import {
   }
 
   function renderLandingMetrics() {
+    if (DashboardStore.dataMode === 'pipeline') {
+      renderPipelineLandingMetrics();
+      return;
+    }
     const g = DashboardStore.global;
     const history = g.historicalAverage;
 
@@ -1078,7 +1921,7 @@ import {
 
       const kwhEl = card.querySelector('.battery-metric-kwh');
       if (kwhEl) {
-        kwhEl.textContent = formatNumber(p.kwh) + ' kWh';
+        kwhEl.textContent = formatConsumption(p, p.kwh);
         kwhEl.style.color = p.isCritical ? 'var(--fire-red)' : '';
       }
 
@@ -1142,8 +1985,10 @@ import {
   function renderExecutiveSummary() {
     const plants = Object.values(DashboardStore.plants);
     const improvedCount = plants.filter(plant => plant.kwh < plant.previous.kwh).length;
-    const netDeltaKwh = plants.reduce((sum, plant) => sum + (plant.kwh - plant.previous.kwh), 0);
-    const focusPlant = plants.reduce((focus, plant) => {
+    // kWh y m³ no se suman: el consumo neto y el foco solo consideran plantas de energía (kWh).
+    const energyPlants = plants.filter(plant => getPlantConsumptionUnit(plant) === 'kWh');
+    const netDeltaKwh = energyPlants.reduce((sum, plant) => sum + (plant.kwh - plant.previous.kwh), 0);
+    const focusPlant = energyPlants.reduce((focus, plant) => {
       const delta = plant.kwh - plant.previous.kwh;
       return delta > focus.delta ? { plant, delta } : focus;
     }, { plant: null, delta: 0 });
@@ -1151,7 +1996,7 @@ import {
     setElementText('decision-balance', improvedCount + ' de ' + plants.length + ' plantas mejoran');
     setElementText(
       'decision-balance-detail',
-      'Consumo neto: ' + formatNumber(Math.abs(netDeltaKwh)) + ' kWh ' + (netDeltaKwh <= 0 ? 'menos' : 'adicionales')
+      'Consumo eléctrico neto: ' + formatNumber(Math.abs(netDeltaKwh)) + ' kWh ' + (netDeltaKwh <= 0 ? 'menos' : 'adicionales')
     );
 
     if (focusPlant.plant) {
@@ -1210,7 +2055,7 @@ import {
       const kwhValue = card.querySelector('.sidebar-kwh-value');
       if (kwhValue) {
         const unit = document.createElement('span');
-        unit.textContent = 'kWh';
+        unit.textContent = getPlantConsumptionUnit(plant);
         kwhValue.replaceChildren(document.createTextNode(formatNumber(plant.kwh) + ' '), unit);
         kwhValue.style.color = plant.isCritical ? 'var(--fire-red)' : '';
       }
@@ -1343,7 +2188,7 @@ import {
 
       if (currentPlant.isCritical && !DashboardStore.faultAcknowledged) {
         statusPill.className = 'status-badge-live danger';
-        text.textContent = currentPlant.analytics ? '▲ ALERTA DE INTENSIDAD' : '▲ PLANTA EN SOBRECONSUMO';
+        text.textContent = currentPlant.analytics ? '▲ ALERTA DE DESEMPEÑO ENERGÉTICO' : '▲ PLANTA EN SOBRECONSUMO';
       } else {
         statusPill.className = 'status-badge-live normal';
         text.textContent = '● PLANTA EN OPERACIÓN NORMAL';
@@ -1354,10 +2199,13 @@ import {
 
     // 3. High-level KPI Summary Cards (Detail)
     setElementText('detail-kpi-total-kwh', formatNumber(currentPlant.kwh));
+    const isGas = getPlantConsumptionUnit(currentPlant) === 'm³';
+    setElementText('detail-kpi-total-title', 'Consumo total (' + getPlantConsumptionUnit(currentPlant) + ')');
+    setElementText('detail-kpi-cost-title', isGas ? 'Costo gas' : 'Costo energía');
     setElementText(
       'detail-kpi-kwh-sub',
       hasNumericValue(currentPlant.budgetKwh)
-        ? 'Meta estimada: ' + formatNumber(currentPlant.budgetKwh) + ' kWh'
+        ? 'Meta estimada: ' + formatConsumption(currentPlant, currentPlant.budgetKwh)
         : 'Meta no disponible en la fuente'
     );
 
@@ -1366,7 +2214,7 @@ import {
       setElementText(
         'detail-kpi-cost-context',
         hasNumericValue(currentPlant.energyTariff)
-          ? 'Tarifa: ' + formatCurrencyCop(currentPlant.energyTariff) + ' / kWh'
+          ? 'Tarifa: ' + formatCurrencyCop(currentPlant.energyTariff) + ' / ' + getPlantConsumptionUnit(currentPlant)
           : 'Costo y tarifa no disponibles para este corte'
       );
       const costElement = document.getElementById('detail-kpi-cost');
@@ -1377,7 +2225,7 @@ import {
       }
     } else {
       setElementText('detail-kpi-cost', formatCurrencyCop(currentPlant.costCop, true));
-      setElementText('detail-kpi-cost-context', 'Tarifa estimada: ' + formatCurrencyCop(currentPlant.costCop / currentPlant.kwh) + ' / kWh');
+      setElementText('detail-kpi-cost-context', 'Tarifa estimada: ' + formatCurrencyCop(currentPlant.costCop / currentPlant.kwh) + ' / ' + getPlantConsumptionUnit(currentPlant));
     }
     const intensityUnit = getPlantIntensityUnit(currentPlant);
     setElementText('detail-kpi-unit-ratio', formatDecimal(currentPlant.ratioKwhUnit, 2) + ' ' + intensityUnit);
@@ -1414,7 +2262,7 @@ import {
     setElementText(
       'detail-kpi-dev-sub',
       hasNumericValue(currentPlant.deviationPct)
-        ? (currentPlant.deviationPct > 0 ? 'Intensidad sobre presupuesto' : 'Intensidad dentro del presupuesto')
+        ? (currentPlant.deviationPct > 0 ? 'Desempeño energético sobre presupuesto' : 'Desempeño energético dentro del presupuesto')
         : 'Presupuesto no disponible'
     );
 
@@ -1508,9 +2356,9 @@ import {
     currentMaxCapacity = maxKwh;
 
     setElementText('tachometer-cluster-sub', 'SCADA · ' + plant.name);
-    setElementText('cal-promedio-val', hasNumericValue(budgetKwh) ? formatNumber(budgetKwh) + ' kWh' : 'n.a.');
-    setElementText('cal-capacidad-val', formatNumber(maxKwh) + ' kWh');
-    setElementText('cal-previous-val', formatNumber(plant.previous.kwh) + ' kWh');
+    setElementText('cal-promedio-val', hasNumericValue(budgetKwh) ? formatConsumption(plant, budgetKwh) : 'n.a.');
+    setElementText('cal-capacidad-val', formatConsumption(plant, maxKwh));
+    setElementText('cal-previous-val', formatConsumption(plant, plant.previous.kwh));
     setElementText('cal-capacidad-name', plant.analytics ? 'Límite superior esperado' : 'Capacidad Máxima Contratada');
     if (plant.analytics) setElementText('tachometer-cluster-sub', 'JSON mensual · ' + plant.name);
 
@@ -1529,16 +2377,16 @@ import {
     const exceso = hasNumericValue(budgetKwh) ? newKwh - budgetKwh : null;
     const posValEl = document.getElementById('cal-posicion-val');
     const posSubEl = document.getElementById('cal-posicion-sub');
-    if (posValEl) posValEl.textContent = formatNumber(newKwh) + ' kWh';
+    if (posValEl) posValEl.textContent = formatConsumption(plant, newKwh);
     if (posSubEl) {
       if (!hasNumericValue(exceso)) {
         posSubEl.textContent = 'El corte no declara una meta energética';
         posSubEl.className = 'cal-sub';
       } else if (exceso > 0) {
-        posSubEl.textContent = 'Zona de Sobreconsumo: +' + formatNumber(exceso) + ' kWh Exceso';
+        posSubEl.textContent = 'Zona de Sobreconsumo: +' + formatConsumption(plant, exceso) + ' Exceso';
         posSubEl.className = 'cal-sub red';
       } else {
-        posSubEl.textContent = 'Margen de Seguridad: ' + formatNumber(Math.abs(exceso)) + ' kWh Restante';
+        posSubEl.textContent = 'Margen de Seguridad: ' + formatConsumption(plant, Math.abs(exceso)) + ' Restante';
         posSubEl.className = 'cal-sub green';
       }
     }
@@ -1548,11 +2396,11 @@ import {
       'cal-capacidad-sub',
       plant.analytics
         ? (capacityRemaining >= 0
-          ? 'Margen hasta rango superior: ' + formatNumber(capacityRemaining) + ' kWh'
-          : 'Rango superior excedido: ' + formatNumber(Math.abs(capacityRemaining)) + ' kWh')
+          ? 'Margen hasta rango superior: ' + formatConsumption(plant, capacityRemaining)
+          : 'Rango superior excedido: ' + formatConsumption(plant, Math.abs(capacityRemaining)))
         : (capacityRemaining >= 0
-          ? 'Margen contratado: ' + formatNumber(capacityRemaining) + ' kWh'
-          : 'Capacidad excedida: ' + formatNumber(Math.abs(capacityRemaining)) + ' kWh')
+          ? 'Margen contratado: ' + formatConsumption(plant, capacityRemaining)
+          : 'Capacidad excedida: ' + formatConsumption(plant, Math.abs(capacityRemaining)))
     );
 
     const dialStatus = document.getElementById('cal-dial-status');
@@ -1688,7 +2536,7 @@ import {
       } else if (isOverBudget) {
         const pctOver = formatDecimal(((kwh - budget) / budget) * 100, 1);
         gaugeAlertPill.className = 'gauge-alert-pill danger';
-        gaugeAlertPill.textContent = `Límite superado: +${pctOver}% sobre la meta de ${formatNumber(budget)} kWh`;
+        gaugeAlertPill.textContent = `Límite superado: +${pctOver}% sobre la meta de ${formatConsumption(DashboardStore.plants[DashboardStore.currentPlantId], budget)}`;
       } else {
         const pctOver = formatDecimal(((kwh - budget) / budget) * 100, 1);
         gaugeAlertPill.className = 'gauge-alert-pill normal';
@@ -1935,7 +2783,7 @@ import {
 
     setAnalyticsSignal(
       'consumption',
-      formatNumber(Math.round(latest.consumo)) + ' kWh',
+      formatConsumption(plant, Math.round(latest.consumo)),
       formatPercentChange(consumptionChange) + ' vs ' + formatMonthLabel(previous.fecha),
       consumptionChange > 0 ? 'negative' : 'positive'
     );
@@ -1955,7 +2803,7 @@ import {
       'budget',
       hasNumericValue(budgetDeviation) ? formatSigned(budgetDeviation, 1) + '%' : 'n.a.',
       hasNumericValue(excessKwh)
-        ? formatNumber(Math.abs(Math.round(excessKwh))) + ' kWh ' + (excessKwh > 0 ? 'sobre' : 'por debajo del') + ' presupuesto estimado'
+        ? formatConsumption(plant, Math.abs(Math.round(excessKwh))) + ' ' + (excessKwh > 0 ? 'sobre' : 'por debajo del') + ' presupuesto estimado'
         : 'El archivo no declara presupuesto para este corte',
       !hasNumericValue(budgetDeviation) ? 'neutral' : (budgetDeviation > 0 ? 'negative' : 'positive')
     );
@@ -1974,7 +2822,7 @@ import {
     }
     if (hasNumericValue(budgetDeviation)) insightParts.push(formatSigned(budgetDeviation, 1) + '% frente al presupuesto');
     if (hasNumericValue(estimatedCostImpact)) insightParts.push('impacto estimado: ' + formatCurrencyCop(estimatedCostImpact, true));
-    setElementText('analytics-control-insight', insightParts.length ? insightParts.join(' · ') + '.' : 'El corte no tiene referencias suficientes para estimar la brecha; revise consumo, producción e intensidad.');
+    setElementText('analytics-control-insight', insightParts.length ? insightParts.join(' · ') + '.' : 'El corte no tiene referencias suficientes para estimar la brecha; revise consumo, producción y desempeño energético.');
 
     renderIntensityControlChart(getSelectedSeriesWindow(analytics, 24), analytics.intensityUnit);
     renderAnalyticsProcessComparison(analytics.processes, analytics.intensityUnit, latest.fecha, plant.name);
@@ -1998,7 +2846,7 @@ import {
     if (records.length < 2) {
       svg.appendChild(createSvgElement('text', {
         x: 380, y: 140, 'text-anchor': 'middle', fill: '#788296', 'font-size': 12
-      }, 'Se requieren dos cortes con intensidad para dibujar la tendencia.'));
+      }, 'Se requieren dos cortes con desempeño energético para dibujar la tendencia.'));
       return;
     }
 
@@ -2224,7 +3072,7 @@ import {
       ['Presupuesto', budgetMonths + ' meses', 'No se imputa en períodos sin dato'],
       ['Calidad declarada', corrections + ' correcciones', observations + ' observaciones registradas'],
       ['Período excluido', excluded, 'No participa en la historia de referencia'],
-      ['Estacionalidad', seasonalityValue, seasonalityMetrics.length ? 'Consumo, producción e intensidad' : 'No declarada en el archivo importado'],
+      ['Estacionalidad', seasonalityValue, seasonalityMetrics.length ? 'Consumo, producción y desempeño energético' : 'No declarada en el archivo importado'],
       ['Regla de rango', analytics.parameters.rango_ventana_meses + ' meses · z=' + analytics.parameters.rango_z, 'Mínimo ' + analytics.parameters.rango_min_obs + ' observaciones']
     ].forEach(([label, value, detail]) => {
       const item = document.createElement('div');
@@ -2265,7 +3113,7 @@ import {
 
       const stats = document.createElement('span');
       stats.className = 'process-stats';
-      stats.textContent = `${formatNumber(proc.kwh)} kWh (${proc.pct}%)`;
+      stats.textContent = `${formatConsumption(DashboardStore.plants[DashboardStore.currentPlantId], proc.kwh)} (${proc.pct}%)`;
 
       header.appendChild(name);
       header.appendChild(stats);
@@ -2340,12 +3188,12 @@ import {
       const range = latest.rangos?.intensidad || {};
       const hasAlerts = plant.alertCount > 0;
       card.classList.toggle('resolved', !hasAlerts);
-      if (badge) badge.textContent = hasAlerts ? 'PRIORIDAD: INTENSIDAD ENERGÉTICA' : 'LECTURA ANALÍTICA EN RANGO';
+      if (badge) badge.textContent = hasAlerts ? 'PRIORIDAD: DESEMPEÑO ENERGÉTICO' : 'LECTURA ANALÍTICA EN RANGO';
       if (desc) {
         const findings = [];
         if (hasNumericValue(latest.desviacion_ppto)) {
           const deviation = Number(latest.desviacion_ppto) * 100;
-          findings.push('la intensidad está ' + formatSigned(deviation, 1) + '% ' + (deviation > 0 ? 'sobre' : 'frente al') + ' presupuesto');
+          findings.push('el desempeño energético está ' + formatSigned(deviation, 1) + '% ' + (deviation > 0 ? 'sobre' : 'frente al') + ' presupuesto');
         } else {
           findings.push('el archivo no incluye presupuesto para este corte');
         }
@@ -2374,7 +3222,7 @@ import {
       card.classList.remove('resolved');
       if (badge) badge.textContent = 'AVISO CRÍTICO DE OPERACIÓN';
       const ratioDeviation = ((plant.ratioKwhUnit - plant.ratioTarget) / plant.ratioTarget) * 100;
-      if (desc) desc.textContent = `La demanda total supera el presupuesto en ${formatDecimal(plant.deviationPct, 1)}%; la intensidad unitaria está ${formatDecimal(ratioDeviation, 1)}% sobre la meta (${formatDecimal(plant.ratioKwhUnit, 2)} frente a ${formatDecimal(plant.ratioTarget, 2)} kWh/u). Fuente local: ${plant.nodeUri}.`;
+      if (desc) desc.textContent = `La demanda total supera el presupuesto en ${formatDecimal(plant.deviationPct, 1)}%; el desempeño energético está ${formatDecimal(ratioDeviation, 1)}% sobre la meta (${formatDecimal(plant.ratioKwhUnit, 2)} frente a ${formatDecimal(plant.ratioTarget, 2)} ${getPlantIntensityUnit(plant)}). Fuente local: ${plant.nodeUri}.`;
       if (btnAck) {
         btnAck.textContent = 'Confirmar alerta local';
         btnAck.classList.remove('acked');
@@ -2815,7 +3663,9 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     document.querySelectorAll('[data-plant-id]').forEach(element => {
       if (element.getAttribute('data-plant-id') === plantId) element.remove();
     });
-    DashboardStore.currentPlantId = 'fa';
+    DashboardStore.currentPlantId = DashboardStore.landingPlantId in DashboardStore.plants
+      ? DashboardStore.landingPlantId
+      : Object.keys(DashboardStore.plants)[0];
     persistCustomPlants();
     renderAllViews();
     return true;
@@ -2894,23 +3744,23 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     const findings = [];
     if (hasNumericValue(consumptionChange)) {
       findings.push(
-        'El consumo fue ' + formatNumber(plant.kwh) + ' kWh y ' +
+        'El consumo fue ' + formatConsumption(plant, plant.kwh) + ' y ' +
         (consumptionChange > 0 ? 'aumentó ' : (consumptionChange < 0 ? 'disminuyó ' : 'no cambió ')) +
-        formatDecimal(Math.abs(consumptionChange), 1) + '% frente al corte anterior (' + formatNumber(plant.previous.kwh) + ' kWh).'
+        formatDecimal(Math.abs(consumptionChange), 1) + '% frente al corte anterior (' + formatConsumption(plant, plant.previous.kwh) + ').'
       );
     }
     if (hasNumericValue(ratioGap)) {
       findings.push(
-        'La intensidad energética es ' + formatDecimal(plant.ratioKwhUnit, 2) + ' ' + getPlantIntensityUnit(plant) +
+        'El desempeño energético es ' + formatDecimal(plant.ratioKwhUnit, 2) + ' ' + getPlantIntensityUnit(plant) +
         ', ' + formatDecimal(Math.abs(ratioGap), 1) + '% ' + (ratioGap > 0 ? 'por encima' : 'por debajo') + ' de la meta.'
       );
     } else {
-      findings.push('No existe una meta de intensidad suficiente para evaluar la eficiencia por unidad producida.');
+      findings.push('No existe una meta de desempeño energético suficiente para evaluar la eficiencia por unidad producida.');
     }
     if (hasNumericValue(deviation) && hasNumericValue(budgetGapKwh)) {
       findings.push(
         'La brecha presupuestaria es ' + formatSigned(deviation, 1) + '%: ' +
-        formatNumber(Math.abs(Math.round(budgetGapKwh))) + ' kWh ' + (budgetGapKwh > 0 ? 'sobre' : 'por debajo de') + ' la meta estimada.'
+        formatConsumption(plant, Math.abs(Math.round(budgetGapKwh))) + ' ' + (budgetGapKwh > 0 ? 'sobre' : 'por debajo de') + ' la meta estimada.'
       );
     }
     if (hasNumericValue(costChange) && hasNumericValue(currentCost)) {
@@ -2922,13 +3772,13 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     }
     if (topProcess) {
       findings.push(
-        topProcess.name + ' concentra ' + formatDecimal(topProcess.pct, 1) + '% del consumo visible (' + formatNumber(topProcess.kwh) + ' kWh); es el primer frente para segmentar la revisión.'
+        topProcess.name + ' concentra ' + formatDecimal(topProcess.pct, 1) + '% del consumo visible (' + formatConsumption(plant, topProcess.kwh) + '); es el primer frente para segmentar la revisión.'
       );
     }
     if (hasNumericValue(range.esperado)) {
       const historicalGap = percentageChange(plant.ratioKwhUnit, range.esperado);
       findings.push(
-        'Frente al rango histórico, la intensidad está ' + formatDecimal(Math.abs(historicalGap), 1) + '% ' +
+        'Frente al rango histórico, el desempeño energético está ' + formatDecimal(Math.abs(historicalGap), 1) + '% ' +
         (historicalGap > 0 ? 'por encima' : 'por debajo') + ' del valor esperado de ' + formatDecimal(range.esperado, 2) + ' ' + getPlantIntensityUnit(plant) + '.'
       );
     }
@@ -2941,7 +3791,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       decisions.push({
         title: 'Validar el foco de mayor consumo antes del siguiente corte',
         detail: 'Revisar ' + (topProcess?.name || 'el proceso principal') + ' con operación, mantenimiento y producción. Confirmar si el cambio corresponde a volumen, ineficiencia, parada, arranque o calidad del dato.',
-        indicator: 'Criterio de cierre: consumo e intensidad explicados y responsable asignado.'
+        indicator: 'Criterio de cierre: consumo y desempeño energético explicados y responsable asignado.'
       });
     }
     if (hasNumericValue(ratioGap) && ratioGap > 0) {
@@ -2954,28 +3804,28 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     if (hasNumericValue(costChange) && costChange > 0) {
       decisions.push({
         title: 'Separar efecto consumo y efecto tarifa',
-        detail: 'Verificar si el aumento del costo se explica por más kWh, por una tarifa COP/kWh mayor o por ambos. Esto evita priorizar acciones operativas cuando la causa principal es contractual.',
-        indicator: 'Seguimiento: costo total, kWh y COP/kWh en la misma revisión.'
+        detail: 'Verificar si el aumento del costo se explica por más ' + getPlantConsumptionUnit(plant) + ', por una tarifa COP/' + getPlantConsumptionUnit(plant) + ' mayor o por ambos. Esto evita priorizar acciones operativas cuando la causa principal es contractual.',
+        indicator: 'Seguimiento: costo total, ' + getPlantConsumptionUnit(plant) + ' y COP/' + getPlantConsumptionUnit(plant) + ' en la misma revisión.'
       });
     }
     if (hasNumericValue(productionChange) && hasNumericValue(consumptionChange) && productionChange < 0 && consumptionChange > 0) {
       decisions.push({
         title: 'Escalar la combinación consumo arriba / producción abajo',
         detail: 'La señal conjunta sugiere pérdida de eficiencia y merece revisión prioritaria de tiempos ociosos, rechazos, reprocesos y equipos auxiliares.',
-        indicator: 'Seguimiento: producción, horas operadas, intensidad y reproceso.'
+        indicator: 'Seguimiento: producción, horas operadas, desempeño energético y reproceso.'
       });
     }
     if (!decisions.length) {
       decisions.push({
         title: 'Mantener el control y documentar la práctica favorable',
         detail: 'El corte no muestra una desviación prioritaria. Registrar las condiciones de operación que ayudaron al resultado para comprobar si son repetibles.',
-        indicator: 'Seguimiento: conservar intensidad en meta durante los próximos tres cortes.'
+        indicator: 'Seguimiento: conservar el desempeño energético en meta durante los próximos tres cortes.'
       });
     }
     decisions.push({
       title: 'Revisar nuevamente en el próximo corte',
       detail: 'Asignar responsable y fecha. Una recomendación solo se considera efectiva cuando el KPI posterior confirma el cambio sin deteriorar producción ni calidad.',
-      indicator: 'Seguimiento mínimo: consumo, producción, intensidad, costo y alertas.'
+      indicator: 'Seguimiento mínimo: consumo, producción, desempeño energético, costo y alertas.'
     });
 
     const limitations = [
@@ -3010,12 +3860,12 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       metrics: [
         {
           label: 'Consumo',
-          value: formatNumber(plant.kwh) + ' kWh',
+          value: formatConsumption(plant, plant.kwh),
           detail: hasNumericValue(consumptionChange) ? formatPercentChange(consumptionChange) + ' vs corte anterior' : 'Sin comparación',
           state: !hasNumericValue(consumptionChange) ? 'neutral' : (consumptionChange > 0 ? 'negative' : 'positive')
         },
         {
-          label: 'Intensidad',
+          label: 'Desempeño energético',
           value: formatDecimal(plant.ratioKwhUnit, 2) + ' ' + getPlantIntensityUnit(plant),
           detail: hasNumericValue(ratioGap) ? formatPercentChange(ratioGap) + ' vs meta' : 'Meta no disponible',
           state: !hasNumericValue(ratioGap) ? 'neutral' : (ratioGap > 0 ? 'negative' : 'positive')
@@ -3023,7 +3873,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
         {
           label: 'Presupuesto',
           value: hasNumericValue(deviation) ? formatSigned(deviation, 1) + '%' : 'n.a.',
-          detail: hasNumericValue(budgetGapKwh) ? formatNumber(Math.abs(Math.round(budgetGapKwh))) + ' kWh de brecha' : 'Sin presupuesto',
+          detail: hasNumericValue(budgetGapKwh) ? formatConsumption(plant, Math.abs(Math.round(budgetGapKwh))) + ' de brecha' : 'Sin presupuesto',
           state: !hasNumericValue(deviation) ? 'neutral' : (deviation > 0 ? 'negative' : 'positive')
         },
         {
@@ -3357,7 +4207,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
         appendRow(
           formatMonthLabel(period),
           formatProcessName(process.proceso),
-          hasNumericValue(record.consumo) ? formatNumber(Math.round(record.consumo)) + ' kWh' : 'n.a.',
+          hasNumericValue(record.consumo) ? formatConsumption(plant, Math.round(record.consumo)) : 'n.a.',
           hasNumericValue(record.intensidad) ? formatDecimal(record.intensidad, 2) + ' ' + plant.analytics.intensityUnit : 'n.a.',
           stateLabel,
           stateClass
@@ -3371,8 +4221,8 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
       appendRow(
         'Snapshot local',
         plant.name,
-        formatNumber(plant.kwh) + ' kWh',
-        formatDecimal(plant.ratioKwhUnit, 2) + ' kWh/u',
+        formatConsumption(plant, plant.kwh),
+        formatDecimal(plant.ratioKwhUnit, 2) + ' ' + getPlantIntensityUnit(plant),
         plant.isCritical ? 'Alerta local' : 'En rango local',
         plant.isCritical ? 'alert' : 'normal'
       );
@@ -3479,7 +4329,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     let fileName;
 
     if (p.analytics) {
-      csv = 'Fecha,Consumo_kWh,Produccion_ECU,Intensidad_kWh_ECU,Intensidad_Ppto,Desviacion_Ppto,Costo_Unitario_COP_kWh,Costo_Total_COP,Estado_Intensidad\n';
+      csv = 'Fecha,Consumo_kWh,Produccion_ECU,Desempeno_kWh_ECU,Desempeno_Ppto,Desviacion_Ppto,Costo_Unitario_COP_kWh,Costo_Total_COP,Estado_Desempeno\n';
       p.analytics.totalSeries.forEach(record => {
         csv += [
           record.fecha,
@@ -3593,7 +4443,7 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
   function setKpiCardState(id, state) {
     const card = document.getElementById(id);
     if (!card) return;
-    card.classList.remove('state-positive', 'state-negative', 'state-neutral');
+    card.classList.remove('state-positive', 'state-negative', 'state-neutral', 'state-warning');
     card.classList.add('state-' + state);
   }
 
@@ -3660,8 +4510,17 @@ rc_energy,864000,780000,200000,Sobreconsumo Termico
     return analytics?.totalSeries?.slice(Math.max(0, end - length), end) || [];
   }
 
+  /** Unidad de consumo de la planta: m³ para gas, kWh para energía (y plantas demo). */
+  function getPlantConsumptionUnit(plant) {
+    return plant?.unit === 'm3' ? 'm³' : 'kWh';
+  }
+
+  function formatConsumption(plant, value) {
+    return formatNumber(value) + ' ' + getPlantConsumptionUnit(plant);
+  }
+
   function getPlantIntensityUnit(plant) {
-    return plant?.analytics?.intensityUnit || 'kWh/u';
+    return (plant?.analytics?.intensityUnit || 'kWh/u').replace('m3', 'm³');
   }
 
   function getIntensityDenominator(unit) {

@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 
 const RANGE_WINDOW = 24;
 const RANGE_MIN_OBSERVATIONS = 12;
-const RANGE_Z = 2;
+const RANGE_Z = 3; // igual que el pipeline (RANGE_Z en pipeline/config.py)
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
 
 const MONTHS = {
@@ -131,7 +131,7 @@ export function normalizeEnergyDataset(dataset, expectedId = '') {
     hasNumericValue(record.consumo) && hasNumericValue(record.intensidad)
   ));
   if (totalSeries.length < 2) {
-    throw new Error('La serie total no tiene suficientes valores válidos de consumo e intensidad.');
+    throw new Error('La serie total no tiene suficientes valores válidos de consumo y desempeño energético.');
   }
 
   const analytics = {
@@ -139,8 +139,6 @@ export function normalizeEnergyDataset(dataset, expectedId = '') {
     totalProcess,
     totalSeries,
     processes,
-    sourceAlerts: Array.isArray(dataset.alertas_ultimo_mes?.alertas) ? dataset.alertas_ultimo_mes.alertas : [],
-    sourceAlertPeriod: normalizePeriod(dataset.alertas_ultimo_mes?.fecha),
     period: dataset.periodo || {
       inicio: totalSeries[0].fecha,
       fin: totalSeries.at(-1).fecha,
@@ -150,7 +148,7 @@ export function normalizeEnergyDataset(dataset, expectedId = '') {
     quality: dataset.calidad || {},
     generatedAt: dataset.generado || '',
     unit: dataset.unidad || 'kWh',
-    intensityUnit: dataset.unidad_intensidad || 'kWh/u',
+    intensityUnit: (dataset.unidad_intensidad || 'kWh/u').replace('m3', 'm³'),
     availablePeriods: totalSeries.slice(1).map(record => record.fecha),
     latestAvailable: totalSeries.at(-1)
   };
@@ -168,9 +166,7 @@ export function selectAnalyticsPeriod(analytics, period) {
   analytics.selectedIndex = index;
   analytics.latest = analytics.totalSeries[index];
   analytics.previous = analytics.totalSeries[index - 1];
-  analytics.alerts = analytics.sourceAlertPeriod === normalizedPeriod
-    ? analytics.sourceAlerts
-    : deriveAnalyticalAlerts(analytics.processes, normalizedPeriod);
+  analytics.alerts = deriveAnalyticalAlerts(analytics.processes, normalizedPeriod);
   return true;
 }
 
@@ -179,13 +175,19 @@ export function findProcessRecord(process, period) {
   return process?.serie?.find(record => record.fecha === normalizedPeriod) || null;
 }
 
+/**
+ * Alertas por proceso (la fila total de la planta no cuenta): desempeño energético (intensidad)
+ * peor que su rango normal, o por encima del presupuesto. Un desempeño mejor que el rango no es
+ * alerta. Misma regla que el pipeline (_alerts en pipeline/export.py).
+ */
 export function deriveAnalyticalAlerts(processes, period) {
   const alerts = [];
   processes.forEach(process => {
+    if (process.es_total) return;
     const record = findProcessRecord(process, period);
     if (!record) return;
     const range = record.rangos?.intensidad || {};
-    if (range.estado && !['normal', 'sin_historia'].includes(range.estado)) {
+    if (range.estado === 'alto') {
       alerts.push({
         proceso: process.proceso,
         tipo: 'fuera_de_rango',
@@ -289,7 +291,7 @@ function extractWorkbookRecords(workbook, plantName) {
   });
 
   if (!records.length) {
-    throw new Error('No se detectaron filas mensuales. El archivo debe incluir fecha o período, consumo y producción o intensidad.');
+    throw new Error('No se detectaron filas mensuales. El archivo debe incluir fecha o período, consumo y producción o desempeño energético.');
   }
   return {
     records,

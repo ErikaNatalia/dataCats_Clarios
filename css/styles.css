@@ -464,6 +464,17 @@ body::after {
   gap: 18px;
 }
 
+/* Con datos del pipeline se agrega la tarjeta de desempeño global: 5 columnas en escritorio. */
+@media (min-width: 1281px) {
+  .kpi-row-landing:has(#landing-kpi-performance-card:not([hidden])) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.kpi-card[hidden] {
+  display: none;
+}
+
 .kpi-card {
   background: var(--bg-card-glass);
   border: 1px solid var(--border-glass-side);
@@ -2956,6 +2967,42 @@ input:focus-visible {
   background: linear-gradient(90deg, rgba(124, 77, 255, 0.45), var(--clarios-purple-light));
 }
 
+.kpi-card.state-warning::after {
+  background: linear-gradient(90deg, rgba(255, 171, 0, 0.45), var(--amber-warn));
+}
+
+.kpi-card.state-warning .kpi-icon-wrap {
+  color: var(--amber-warn);
+  background: var(--amber-warn-bg);
+}
+
+/* Tarjetas cuyo estado se lee por color de toda la tarjeta (desviación de presupuesto). */
+.kpi-card-tinted.state-positive {
+  border-color: rgba(0, 230, 118, 0.35);
+  background: linear-gradient(180deg, var(--neon-green-bg), transparent 70%), var(--bg-card);
+}
+
+.kpi-card-tinted.state-warning {
+  border-color: rgba(255, 171, 0, 0.4);
+  background: linear-gradient(180deg, var(--amber-warn-bg), transparent 70%), var(--bg-card);
+}
+
+.kpi-card-tinted.state-negative {
+  border-color: rgba(255, 61, 87, 0.45);
+  background: linear-gradient(180deg, var(--fire-red-bg), transparent 70%), var(--bg-card);
+}
+
+/* Frase que explica el valor de la tarjeta (más legible que el pie normal). */
+.kpi-footer-sub.kpi-explainer {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.kpi-card [hidden] {
+  display: none;
+}
+
 .kpi-card.state-negative .kpi-icon-wrap {
   color: var(--fire-red);
   background: var(--fire-red-bg);
@@ -4934,4 +4981,165 @@ body.drawer-open {
   .analysis-footer-actions > button {
     flex: 1;
   }
+}
+
+/* --- Carga de datos fuente (Excel -> pipeline) --- */
+.sources-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.sources-hero-actions [hidden],
+#modal-load-source [hidden],
+#sources-loads-card[hidden] {
+  display: none;
+}
+
+.load-block {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.load-block > strong {
+  color: var(--text-main);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.load-block ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.load-block-danger {
+  border-color: rgba(255, 61, 87, 0.28);
+  background: var(--fire-red-bg);
+}
+
+.load-block-danger > strong {
+  color: var(--fire-red);
+}
+
+.load-block-warn {
+  border-color: rgba(255, 171, 0, 0.28);
+  background: var(--amber-warn-bg);
+}
+
+.load-block-warn > strong {
+  color: var(--amber-warn);
+}
+
+.load-block-ok {
+  border-color: rgba(0, 230, 118, 0.25);
+  background: var(--neon-green-bg);
+}
+
+.load-block-ok > strong {
+  color: var(--neon-green);
+}
+
+.sources-table.load-table {
+  min-width: 0;
+}
+
+.load-table td,
+.load-table th {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.load-changes .is-new {
+  color: var(--neon-green);
+}
+
+.load-changes .is-missing {
+  color: var(--amber-warn);
+}
+
+.load-phases {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.load-phases li {
+  padding: 10px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.load-phases li.is-done {
+  border-color: rgba(0, 230, 118, 0.3);
+  color: var(--neon-green);
+}
+
+.load-phases li.is-active {
+  border-color: var(--border-purple);
+  color: var(--clarios-purple-light);
+  box-shadow: var(--shadow-purple);
+  animation: load-pulse 1.6s ease-in-out infinite;
+}
+
+.load-phases li.is-failed {
+  border-color: rgba(255, 61, 87, 0.4);
+  color: var(--fire-red);
+}
+
+@keyframes load-pulse {
+  50% { opacity: 0.6; }
+}
+
+.load-log summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.load-log pre {
+  max-height: 220px;
+  min-height: 0;
+  margin-top: 8px;
+  font-size: 10px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .sources-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sources-hero-actions {
+    justify-content: stretch;
+  }
+
+  .load-phases {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+#btn-open-add-plant[hidden],
+#btn-sources-add-plant[hidden] {
+  display: none;
 }

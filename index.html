@@ -144,7 +144,7 @@
         <!-- 1. Gasto de Energía General -->
         <div id="landing-kpi-energy-card" class="kpi-card purple">
           <div class="kpi-header">
-            <span class="kpi-title">Gasto de Energía General</span>
+            <span class="kpi-title">Consumo de energía</span>
             <div class="kpi-icon-wrap">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
@@ -153,11 +153,11 @@
           </div>
           <div class="kpi-value-wrap">
             <span id="landing-global-kwh" class="kpi-value">2,808,000</span>
-            <span class="kpi-unit">kWh</span>
+            <span id="landing-global-kwh-unit" class="kpi-unit">kWh</span>
           </div>
           <div class="kpi-footer">
             <span id="landing-global-kwh-trend" class="trend-chip trend-positive">↓ 2.2% mejora</span>
-            <span class="kpi-footer-sub">vs promedio histórico</span>
+            <span id="landing-global-kwh-note" class="kpi-footer-sub">vs promedio histórico</span>
           </div>
           <div id="landing-global-kwh-baseline" class="kpi-baseline">Promedio: 2,870,000 kWh</div>
         </div>
@@ -165,7 +165,7 @@
         <!-- 2. Gasto Total Energía COP -->
         <div id="landing-kpi-cost-card" class="kpi-card purple">
           <div class="kpi-header">
-            <span class="kpi-title">Gasto Total Energía</span>
+            <span class="kpi-title">Gasto en energía y gas</span>
             <div class="kpi-icon-wrap">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <rect x="2" y="4" width="20" height="16" rx="2"/>
@@ -175,17 +175,38 @@
           </div>
           <div class="kpi-value-wrap">
             <span id="landing-global-cost" class="kpi-value">$2.147.840.000</span>
-            <span class="kpi-unit">COP</span>
+            <span id="landing-global-cost-unit" class="kpi-unit">COP</span>
           </div>
           <div class="kpi-footer">
             <span id="landing-global-cost-trend" class="trend-chip trend-positive">↓ 2.1% mejora</span>
-            <span class="kpi-footer-sub">vs promedio histórico</span>
+            <span id="landing-global-cost-note" class="kpi-footer-sub">vs promedio histórico</span>
           </div>
           <div id="landing-global-cost-baseline" class="kpi-baseline">Promedio: $2.192.800.000 COP</div>
         </div>
 
+        <!-- 3. Desempeño energético global (índice ISO 50001); solo con datos del pipeline -->
+        <div id="landing-kpi-performance-card" class="kpi-card purple" hidden>
+          <div class="kpi-header">
+            <span class="kpi-title">Desempeño energético global</span>
+            <div class="kpi-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M3 3v18h18"/>
+                <polyline points="7 14 11 10 14 13 20 7"/>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value-wrap">
+            <span id="landing-global-performance" class="kpi-value">n.a.</span>
+            <span id="landing-global-performance-unit" class="kpi-unit"></span>
+          </div>
+          <div class="kpi-footer">
+            <span id="landing-global-performance-note" class="kpi-footer-sub"></span>
+          </div>
+          <div id="landing-global-performance-baseline" class="kpi-baseline"></div>
+        </div>
+
         <!-- 3. Desviación Presupuesto -->
-        <div id="landing-kpi-deviation-card" class="kpi-card purple">
+        <div id="landing-kpi-deviation-card" class="kpi-card purple kpi-card-tinted">
           <div class="kpi-header">
             <span class="kpi-title">Desviación Presupuesto</span>
             <div class="kpi-icon-wrap">
@@ -198,11 +219,11 @@
           </div>
           <div class="kpi-value-wrap">
             <span id="landing-global-deviation" class="kpi-value">+0.3%</span>
-            <span class="kpi-unit">META 0,0%</span>
+            <span id="landing-global-deviation-unit" class="kpi-unit">META 0,0%</span>
           </div>
           <div class="kpi-footer">
             <span id="landing-global-deviation-trend" class="trend-chip trend-positive">↓ 2.4 pp mejora</span>
-            <span class="kpi-footer-sub">vs promedio histórico</span>
+            <span id="landing-global-deviation-note" class="kpi-footer-sub">vs promedio histórico</span>
           </div>
           <div id="landing-global-deviation-baseline" class="kpi-baseline">Promedio: +2.7% · Tolerancia ±2%</div>
         </div>
@@ -221,10 +242,11 @@
           </div>
           <div class="kpi-value-wrap">
             <span id="landing-global-alerts" class="kpi-value">2 alertas</span>
+            <span id="landing-global-alerts-unit" class="kpi-unit"></span>
           </div>
           <div class="kpi-footer">
             <span id="landing-global-alerts-trend" class="trend-chip trend-positive">↓ 2 menos</span>
-            <span class="kpi-footer-sub">vs promedio histórico</span>
+            <span id="landing-global-alerts-note" class="kpi-footer-sub">vs promedio histórico</span>
           </div>
           <div id="landing-global-alerts-baseline" class="kpi-baseline critical-context">Foco actual: RC Energía y Gas</div>
         </div>
@@ -613,7 +635,7 @@
             </div>
             <div class="sidebar-kwh-value">684,000 <span>kWh</span></div>
             <div class="sidebar-submetrics-row">
-              <div><span class="label">Intens.</span><span class="val">3,42</span></div>
+              <div><span class="label" title="Desempeño energético">Desemp.</span><span class="val">3,42</span></div>
               <div><span class="label">Costo</span><span class="val">$324,2 M COP</span></div>
               <div><span class="label">Desv.</span><span class="val" style="color:var(--neon-green)">-2,3%</span></div>
             </div>
@@ -632,7 +654,7 @@
             </div>
             <div class="sidebar-kwh-value">1,260,000 <span>kWh</span></div>
             <div class="sidebar-submetrics-row">
-              <div><span class="label">Intens.</span><span class="val">6,08</span></div>
+              <div><span class="label" title="Desempeño energético">Desemp.</span><span class="val">6,08</span></div>
               <div><span class="label">Costo</span><span class="val">$604,8 M COP</span></div>
               <div><span class="label">Desv.</span><span class="val" style="color:var(--neon-green)">-3,1%</span></div>
             </div>
@@ -652,7 +674,7 @@
             </div>
             <div class="sidebar-kwh-value" style="color:var(--fire-red);">864,000 <span>kWh</span></div>
             <div class="sidebar-submetrics-row">
-              <div><span class="label">Intens.</span><span class="val">4,32</span></div>
+              <div><span class="label" title="Desempeño energético">Desemp.</span><span class="val">4,32</span></div>
               <div><span class="label">Costo</span><span class="val">$414,7 M COP</span></div>
               <div><span class="label">Desv.</span><span class="val" style="color:var(--fire-red)">+10,8%</span></div>
             </div>
@@ -734,7 +756,7 @@
         <div class="detail-kpi-grid">
           <!-- 1. TOTAL kWh -->
           <div id="detail-card-kwh" class="detail-kpi-card">
-            <span class="detail-kpi-title">Total kWh</span>
+            <span id="detail-kpi-total-title" class="detail-kpi-title">Total kWh</span>
             <div id="detail-kpi-total-kwh" class="detail-kpi-val">864,000</div>
             <div id="detail-kpi-kwh-sub" class="detail-kpi-context">Meta: 780,000 kWh</div>
             <div class="detail-kpi-trend-row">
@@ -745,7 +767,7 @@
 
           <!-- 2. ENERGY COST -->
           <div id="detail-card-cost" class="detail-kpi-card">
-            <span class="detail-kpi-title">Costo energía</span>
+            <span id="detail-kpi-cost-title" class="detail-kpi-title">Costo energía</span>
             <div id="detail-kpi-cost" class="detail-kpi-val">$414.720.000</div>
             <div id="detail-kpi-cost-context" class="detail-kpi-context">Tarifa estimada: $480 COP / kWh</div>
             <div class="detail-kpi-trend-row">
@@ -756,7 +778,7 @@
 
           <!-- 3. CONSUMO UNITARIO -->
           <div id="detail-card-ratio" class="detail-kpi-card">
-            <span class="detail-kpi-title">Consumo Unitario</span>
+            <span class="detail-kpi-title">Desempeño energético</span>
             <div id="detail-kpi-unit-ratio" class="detail-kpi-val">4.32 kWh/u</div>
             <div id="detail-kpi-badge-ratio" class="detail-kpi-badge badge-danger">+8.5% SOBRE META</div>
             <div id="detail-kpi-unit-target" class="detail-kpi-context">Meta: 3.98 kWh/u</div>
@@ -881,7 +903,7 @@
             <div>
               <span class="analytics-kicker">ANALÍTICA MENSUAL · DECISIÓN OPERATIVA</span>
               <h2 id="analytics-title">Lectura estratégica F&amp;A</h2>
-              <p id="analytics-summary">Cruce de consumo, producción, intensidad, presupuesto y costo.</p>
+              <p id="analytics-summary">Cruce de consumo, producción, desempeño energético, presupuesto y costo.</p>
             </div>
             <div class="analytics-header-badges">
               <span id="analytics-period-badge" class="analytics-badge">CORTE JUL 2026</span>
@@ -901,7 +923,7 @@
               <span id="analytics-production-detail" class="analytics-signal-detail">—</span>
             </article>
             <article id="analytics-signal-intensity" class="analytics-signal-card">
-              <span class="analytics-signal-label">Intensidad energética</span>
+              <span class="analytics-signal-label">Desempeño energético</span>
               <strong id="analytics-intensity-value">—</strong>
               <span id="analytics-intensity-detail" class="analytics-signal-detail">—</span>
             </article>
@@ -922,7 +944,7 @@
               <div class="analytics-panel-heading">
                 <div>
                   <span class="analytics-kicker">CONTROL ESTADÍSTICO · 24 MESES</span>
-                  <h3>Intensidad real vs rango esperado y presupuesto</h3>
+                  <h3>Desempeño energético real vs rango esperado y presupuesto</h3>
                 </div>
                 <div class="analytics-chart-legend" aria-label="Leyenda del gráfico">
                   <span class="real">Real</span>
@@ -932,7 +954,7 @@
                 </div>
               </div>
               <div class="analytics-chart-wrap">
-                <svg id="analytics-intensity-chart" class="analytics-intensity-chart" viewBox="0 0 760 280" role="img" aria-label="Serie mensual de intensidad energética"></svg>
+                <svg id="analytics-intensity-chart" class="analytics-intensity-chart" viewBox="0 0 760 280" role="img" aria-label="Serie mensual de desempeño energético"></svg>
               </div>
               <p id="analytics-control-insight" class="analytics-callout danger">—</p>
             </article>
@@ -1138,7 +1160,7 @@
               </div>
 
               <p id="diag-body-text" class="diagnostic-body-text">
-                La demanda total supera el presupuesto en 10.8%; la intensidad unitaria está 8.5% sobre la meta (4.32 vs 3.98 kWh/u). Se detectó un pico térmico en los hornos de fundición.
+                La demanda total supera el presupuesto en 10.8%; el desempeño energético está 8.5% sobre la meta (4.32 vs 3.98 kWh/u). Se detectó un pico térmico en los hornos de fundición.
               </p>
 
               <div id="diagnostic-meta-strip" class="diagnostic-meta-strip">
@@ -1178,7 +1200,34 @@
           <h1 class="hero-heading">Fuentes y trazabilidad de datos</h1>
           <p class="hero-subtext">Consulta el origen de cada lectura, abre los archivos disponibles y valida el recorrido desde la telemetría hasta los KPIs del dashboard.</p>
         </div>
-        <button id="btn-sources-add-plant" class="btn-primary-purple" type="button">＋ Registrar nueva planta</button>
+        <div class="sources-hero-actions">
+          <button id="btn-sources-load-data" class="btn-primary-purple" type="button" hidden>⇪ Cargar datos fuente</button>
+          <a id="link-sources-template" class="btn-ghost-sm" href="/api/plantilla" download hidden>Descargar plantilla Excel</a>
+          <button id="btn-sources-add-plant" class="btn-primary-purple" type="button">＋ Registrar nueva planta</button>
+        </div>
+      </section>
+
+      <section id="sources-loads-card" class="sources-registry-card" hidden>
+        <div class="section-heading-row">
+          <div>
+            <span class="source-section-kicker">EXCEL FUENTE • PIPELINE</span>
+            <h2>Cargas de datos fuente</h2>
+          </div>
+          <span id="sources-excel-summary" class="registry-help"></span>
+        </div>
+        <div class="sources-table-wrap">
+          <table class="sources-table">
+            <thead>
+              <tr>
+                <th>Carga</th>
+                <th>Archivo</th>
+                <th>Cambios</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="loads-table-body"></tbody>
+          </table>
+        </div>
       </section>
 
       <section class="sources-summary-grid" aria-label="Resumen de fuentes">
@@ -1217,7 +1266,7 @@
           <div class="lineage-arrow">→</div>
           <div class="lineage-step"><span>02</span><strong>Validación</strong><small>Planta, consumo y presupuesto</small></div>
           <div class="lineage-arrow">→</div>
-          <div class="lineage-step"><span>03</span><strong>Transformación</strong><small>Costo, intensidad y desviación</small></div>
+          <div class="lineage-step"><span>03</span><strong>Transformación</strong><small>Costo, desempeño energético y desviación</small></div>
           <div class="lineage-arrow">→</div>
           <div class="lineage-step"><span>04</span><strong>Visualización</strong><small>KPIs y alertas accionables</small></div>
         </div>
@@ -1416,7 +1465,7 @@
         <button id="btn-close-add-plant" class="modal-close-btn" type="button" aria-label="Cerrar modal">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="form-intro">Escribe el nombre y carga el Excel, CSV o JSON procesado. El dashboard detectará los períodos, procesos, consumo, producción, intensidad, presupuesto, costos y rangos disponibles; los KPIs se compararán automáticamente contra el corte anterior.</p>
+        <p class="form-intro">Escribe el nombre y carga el Excel, CSV o JSON procesado. El dashboard detectará los períodos, procesos, consumo, producción, desempeño energético, presupuesto, costos y rangos disponibles; los KPIs se compararán automáticamente contra el corte anterior.</p>
         <div class="plant-form-grid">
           <label class="form-field form-field-wide">
             <span>Nombre de la planta *</span>
@@ -1456,6 +1505,91 @@
         <button id="btn-submit-add-plant" class="btn-primary-purple" type="submit">Analizar archivo y crear planta</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Modal: Cargar datos fuente (Excel completo -> pipeline) -->
+<div id="modal-load-source" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-load-source-title">
+  <div class="modal-dialog modal-dialog-wide">
+    <div class="modal-header">
+      <h3 id="modal-load-source-title" class="modal-title">
+        <img src="assets/clarios-mark.png" alt="Clarios" class="modal-brand-logo">
+        Cargar datos fuente
+      </h3>
+      <button id="btn-close-load-source" class="modal-close-btn" type="button" aria-label="Cerrar modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Paso 1: elegir archivo -->
+      <section id="load-step-select">
+        <p class="form-intro">Sube el Excel con los datos originales de todas las plantas. Reemplaza el Excel vigente completo y recalcula indicadores, modelos y pronósticos. Debe seguir la <a href="/api/plantilla" download>plantilla</a>: una hoja por planta y servicio; la última fila de cada mes es el total de la planta.</p>
+        <div id="load-file-dropzone" class="plant-file-dropzone">
+          <input id="load-file-input" type="file" accept=".xlsx" hidden>
+          <div id="load-file-empty-state" class="plant-file-empty-state">
+            <strong>Arrastra el Excel aquí</strong>
+            <span>o selecciónalo desde tu equipo (.xlsx)</span>
+            <button id="btn-select-load-file" class="btn-file-select" type="button">Seleccionar archivo</button>
+          </div>
+          <div id="load-file-selected-state" class="plant-file-selected-state" hidden>
+            <div class="plant-file-selected-copy">
+              <strong id="load-selected-file-name"></strong>
+              <span id="load-selected-file-meta"></span>
+            </div>
+            <div class="plant-file-selected-actions">
+              <button id="btn-replace-load-file" class="btn-ghost-sm" type="button">Cambiar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Paso 2: resultado de la validación y cambios -->
+      <section id="load-step-review" hidden>
+        <div id="load-review-errors" class="load-block load-block-danger" hidden>
+          <strong>El archivo no cumple la plantilla. Corrige estos puntos y vuelve a subirlo:</strong>
+          <ul id="load-review-errors-list"></ul>
+        </div>
+        <div id="load-review-warnings" class="load-block load-block-warn" hidden>
+          <strong>Avisos</strong>
+          <ul id="load-review-warnings-list"></ul>
+        </div>
+        <div id="load-review-ok" hidden>
+          <div class="load-block">
+            <strong>Hojas detectadas</strong>
+            <div class="sources-table-wrap">
+              <table class="sources-table load-table">
+                <thead><tr><th>Hoja</th><th>Planta</th><th>Servicio</th><th>Período</th><th>Costo</th></tr></thead>
+                <tbody id="load-review-sheets"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="load-block">
+            <strong>Cambios frente al Excel vigente</strong>
+            <ul id="load-review-changes" class="load-changes"></ul>
+          </div>
+          <div class="plant-import-note">
+            <strong>Al confirmar</strong>
+            <span>Se guarda una copia del Excel y de los datos actuales, se reemplaza el Excel y se recalcula todo (2 a 4 minutos). Si algo falla, se restaura la versión anterior.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Paso 3: progreso del pipeline -->
+      <section id="load-step-progress" hidden>
+        <ol id="load-phases" class="load-phases"></ol>
+        <div id="load-result" class="load-block" hidden></div>
+        <details class="load-log">
+          <summary>Ver registro del proceso</summary>
+          <pre id="load-log" class="source-preview-content"></pre>
+        </details>
+      </section>
+
+      <div id="load-source-error" class="form-error" role="alert" hidden></div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-cancel-load-source" class="btn-ghost-sm" type="button">Cancelar</button>
+      <button id="btn-back-load-source" class="btn-ghost-sm" type="button" hidden>Elegir otro archivo</button>
+      <button id="btn-validate-load-source" class="btn-primary-purple" type="button" disabled>Validar archivo</button>
+      <button id="btn-apply-load-source" class="btn-primary-purple" type="button" hidden>Reemplazar Excel y recalcular</button>
+    </div>
   </div>
 </div>
 
@@ -1545,7 +1679,7 @@
             <th>Período</th>
             <th>Registro</th>
             <th>Consumo</th>
-            <th>Intensidad</th>
+            <th>Desempeño energético</th>
             <th>Estado</th>
           </tr>
         </thead>
