@@ -15,8 +15,8 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <!-- Core Styles -->
-  <script type="module" crossorigin src="/assets/index-Cuip4grQ.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BZJiVe8B.css">
+  <script type="module" crossorigin src="/assets/index-B53RsBJl.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CJrF0sHx.css">
 </head>
 <body>
 
@@ -29,13 +29,13 @@
     <div class="brand-section">
       <!-- Official Clarios Logo Brandmark -->
       <div class="brand-logo-wrap">
-        <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Brandmark" class="brand-clarios-logo-img">
+        <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Símbolo de Clarios" class="brand-clarios-logo-img">
       </div>
       <div class="brand-title-wrap">
         <div class="brand-name">
           CLARIOS <span class="brand-badge">SCADA</span>
         </div>
-        <div class="brand-subtitle">ENERGY & GAS OPS</div>
+        <div class="brand-subtitle">OPERACIONES DE ENERGÍA Y GAS</div>
       </div>
     </div>
 
@@ -45,7 +45,7 @@
         <span class="tab-dot"></span> Vista General
       </button>
       <button id="tab-detail" class="nav-tab-btn danger" type="button">
-        <span class="tab-dot"></span> Detalle Planta RC Energy & Gas
+        <span class="tab-dot"></span> Detalle Planta RC Energía y Gas
       </button>
       <button id="tab-sources" class="nav-tab-btn" type="button">
         <span class="tab-dot"></span> Fuentes de Datos
@@ -63,6 +63,7 @@
             <line x1="8" y1="2" x2="8" y2="6"/>
             <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
+          <span id="date-filter-scope" class="date-filter-scope">F&amp;A</span>
           <select id="select-filter-month" class="scada-select" title="Seleccionar Mes">
             <option value="0">Enero</option>
             <option value="1">Febrero</option>
@@ -92,7 +93,7 @@
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        <span class="btn-text-responsive">Descargar Informe</span>
+        <span class="btn-text-responsive">Análisis e informe</span>
       </button>
 
       <!-- Hamburger Menu Button for Tablet & Mobile -->
@@ -116,7 +117,7 @@
         <span class="pulse-dot"></span>
         <span>ESTADO GLOBAL SCADA: OPERACIÓN NORMAL</span>
       </div>
-      <div id="sync-timer-label" class="sync-time">SYNC: 12s ago</div>
+      <div id="sync-timer-label" class="sync-time">SINCRONIZADO: hace 12 s</div>
     </div>
   </div>
 
@@ -128,7 +129,7 @@
 
       <!-- Hero Header -->
       <section class="landing-hero">
-        <span class="hero-tagline">MONITOREO MULTI-PLANTA • 24/7 ENERGÍA • GAS • CARBON FOOTPRINT</span>
+        <span class="hero-tagline">MONITOREO MULTIPLANTA • ENERGÍA 24/7 • GAS • HUELLA DE CARBONO</span>
         <h1 class="hero-heading">Vista General Plantas Clarios</h1>
         <p class="hero-subtext">
           Selecciona una planta para inspeccionar consumo, eficiencia energética y desviaciones presupuestarias en tiempo real bajo norma ISO 50001.
@@ -162,7 +163,7 @@
           <div id="landing-global-kwh-baseline" class="kpi-baseline">Promedio: 2,870,000 kWh</div>
         </div>
 
-        <!-- 2. Gasto Total Energía USD -->
+        <!-- 2. Gasto Total Energía COP -->
         <div id="landing-kpi-cost-card" class="kpi-card purple">
           <div class="kpi-header">
             <span class="kpi-title">Gasto Total Energía</span>
@@ -174,14 +175,14 @@
             </div>
           </div>
           <div class="kpi-value-wrap">
-            <span id="landing-global-cost" class="kpi-value">$536,960</span>
-            <span class="kpi-unit">USD</span>
+            <span id="landing-global-cost" class="kpi-value">$2.147.840.000</span>
+            <span class="kpi-unit">COP</span>
           </div>
           <div class="kpi-footer">
             <span id="landing-global-cost-trend" class="trend-chip trend-positive">↓ 2.1% mejora</span>
             <span class="kpi-footer-sub">vs promedio histórico</span>
           </div>
-          <div id="landing-global-cost-baseline" class="kpi-baseline">Promedio: $548,200 USD</div>
+          <div id="landing-global-cost-baseline" class="kpi-baseline">Promedio: $2.192.800.000 COP</div>
         </div>
 
         <!-- 3. Desviación Presupuesto -->
@@ -198,7 +199,7 @@
           </div>
           <div class="kpi-value-wrap">
             <span id="landing-global-deviation" class="kpi-value">+0.3%</span>
-            <span class="kpi-unit">TARGET 0.0%</span>
+            <span class="kpi-unit">META 0,0%</span>
           </div>
           <div class="kpi-footer">
             <span id="landing-global-deviation-trend" class="trend-chip trend-positive">↓ 2.4 pp mejora</span>
@@ -226,7 +227,7 @@
             <span id="landing-global-alerts-trend" class="trend-chip trend-positive">↓ 2 menos</span>
             <span class="kpi-footer-sub">vs promedio histórico</span>
           </div>
-          <div id="landing-global-alerts-baseline" class="kpi-baseline critical-context">Foco actual: RC Energy & Gas</div>
+          <div id="landing-global-alerts-baseline" class="kpi-baseline critical-context">Foco actual: RC Energía y Gas</div>
         </div>
       </section>
 
@@ -243,12 +244,12 @@
           </div>
           <div class="decision-insight priority">
             <span class="decision-insight-label">Mayor oportunidad</span>
-            <strong id="decision-focus">RC Energy & Gas</strong>
+            <strong id="decision-focus">RC Energía y Gas</strong>
             <span id="decision-focus-detail">+52,000 kWh vs corte anterior</span>
           </div>
           <div class="decision-insight">
             <span class="decision-insight-label">Impacto estimado</span>
-            <strong id="decision-impact">+$6,240 USD</strong>
+            <strong id="decision-impact">+$24.960.000 COP</strong>
             <span id="decision-impact-detail">Costo incremental del foco crítico</span>
           </div>
         </div>
@@ -280,7 +281,7 @@
         <!-- Blueprint Header Strip -->
         <div class="blueprint-header-strip">
           <div class="blueprint-title">
-            <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Brandmark" class="blueprint-stamp-img">
+            <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Símbolo de Clarios" class="blueprint-stamp-img">
             <span>Esquema de Distribución por Planta • Células Clarios</span>
           </div>
           <div class="blueprint-legend">
@@ -325,7 +326,7 @@
 
               <div class="battery-submetrics-grid">
                 <div class="submetric-item">
-                  <span class="submetric-title">Ratio Unit</span>
+                  <span class="submetric-title">Consumo unitario</span>
                   <span class="submetric-val submetric-ratio">3.42 kWh/u</span>
                 </div>
                 <div class="submetric-item">
@@ -350,7 +351,7 @@
               <!-- Clarios Industrial Cell Stamp -->
               <div class="battery-brand-stamp">
                 <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Mark" class="battery-stamp-logo">
-                <span class="battery-stamp-text">CLARIOS SMART CELL</span>
+                <span class="battery-stamp-text">CELDA INTELIGENTE CLARIOS</span>
               </div>
             </div>
 
@@ -393,7 +394,7 @@
 
               <div class="battery-submetrics-grid">
                 <div class="submetric-item">
-                  <span class="submetric-title">Ratio Unit</span>
+                  <span class="submetric-title">Consumo unitario</span>
                   <span class="submetric-val submetric-ratio">6.08 kWh/u</span>
                 </div>
                 <div class="submetric-item">
@@ -418,7 +419,7 @@
               <!-- Clarios Industrial Cell Stamp -->
               <div class="battery-brand-stamp">
                 <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Mark" class="battery-stamp-logo">
-                <span class="battery-stamp-text">CLARIOS SMART CELL</span>
+                <span class="battery-stamp-text">CELDA INTELIGENTE CLARIOS</span>
               </div>
             </div>
 
@@ -429,7 +430,7 @@
           </article>
 
           <!-- BATTERY CARD 3: RC Energy & Gas (CRITICAL SOBRECONSUMO) -->
-          <article class="car-battery-card critical" data-plant-id="rc_energy" tabindex="0" role="button" aria-label="Abrir detalles de RC Energy y Gas con alerta crítica">
+          <article class="car-battery-card critical" data-plant-id="rc_energy" tabindex="0" role="button" aria-label="Abrir detalles de RC Energía y Gas con alerta crítica">
             <!-- Physical Top Terminals -->
             <div class="battery-terminal terminal-positive" title="Borne Positivo (+)"></div>
             <div class="battery-terminal terminal-negative" title="Borne Negativo (−)"></div>
@@ -445,7 +446,7 @@
                 <span class="battery-alert-tag tag-danger">FOCO CRÍTICO</span>
               </div>
               <h2 class="battery-plant-name">
-                3. RC Energy & Gas
+                3. RC Energía y Gas
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
                 </svg>
@@ -461,7 +462,7 @@
 
               <div class="battery-submetrics-grid">
                 <div class="submetric-item">
-                  <span class="submetric-title">Ratio Unit</span>
+                  <span class="submetric-title">Consumo unitario</span>
                   <span class="submetric-val submetric-ratio">4.32 kWh/u</span>
                 </div>
                 <div class="submetric-item">
@@ -478,7 +479,7 @@
               <div class="battery-sparkline-box">
                 <div class="sparkline-label">
                   <span>Picos en Generador RC-3</span>
-                  <span style="color: var(--fire-red)">Alerta Smelting</span>
+                  <span style="color: var(--fire-red)">Alerta de fundición</span>
                 </div>
                 <svg class="sparkline-svg"></svg>
               </div>
@@ -486,7 +487,7 @@
               <!-- Clarios Industrial Cell Stamp -->
               <div class="battery-brand-stamp">
                 <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Mark" class="battery-stamp-logo">
-                <span class="battery-stamp-text">CLARIOS SMART CELL</span>
+                <span class="battery-stamp-text">CELDA INTELIGENTE CLARIOS</span>
               </div>
             </div>
 
@@ -500,8 +501,8 @@
 
         <!-- Blueprint Footer Strip -->
         <div class="blueprint-footer-specs">
-          <div>ARQUITECTURA DE BATERÍA INDUSTRIAL: <span id="blueprint-module-count">3 MÓDULOS DE PROCESO ACTIVO (CLARIOS PROTOCOL V4.9)</span></div>
-          <div>FRECUENCIA: <span>60.02 Hz</span> • FACTOR POTENCIA: <span>0.94 FP</span></div>
+          <div>ARQUITECTURA DE BATERÍA INDUSTRIAL: <span id="blueprint-module-count">3 MÓDULOS DE PROCESO ACTIVOS (PROTOCOLO CLARIOS V4.9)</span></div>
+          <div>FRECUENCIA: <span>60,02 Hz</span> • FACTOR DE POTENCIA: <span>0,94</span></div>
         </div>
       </section>
 
@@ -516,9 +517,9 @@
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            <h2 class="upload-title">Carga de Telemetría Masiva • Data Input</h2>
+            <h2 class="upload-title">Carga masiva de telemetría • Entrada de datos</h2>
           </div>
-          <span class="upload-formats-badge">FORMATOS: .XLSX, .CSV, .DAT (MODBUS DUMP)</span>
+          <span class="upload-formats-badge">FORMATOS: .XLSX, .CSV, .DAT (VOLCADO MODBUS)</span>
         </div>
 
         <!-- Drag & Drop Zone -->
@@ -593,7 +594,7 @@
       <aside class="plant-sidebar" aria-label="Selector de Módulos de Planta">
         <div class="sidebar-brand-badge">
           <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Mark" class="sidebar-brand-img">
-          <span>CLARIOS CELLULAR MATRIX</span>
+          <span>MATRIZ DE PLANTAS CLARIOS</span>
         </div>
 
         <div class="sidebar-header">
@@ -613,12 +614,12 @@
             </div>
             <div class="sidebar-kwh-value">684,000 <span>kWh</span></div>
             <div class="sidebar-submetrics-row">
-              <div><span class="label">Ratio</span><span class="val">3.42</span></div>
-              <div><span class="label">Costo</span><span class="val">$81k</span></div>
-              <div><span class="label">Desv</span><span class="val" style="color:var(--neon-green)">-2.3%</span></div>
+              <div><span class="label">Intens.</span><span class="val">3,42</span></div>
+              <div><span class="label">Costo</span><span class="val">$324,2 M COP</span></div>
+              <div><span class="label">Desv.</span><span class="val" style="color:var(--neon-green)">-2,3%</span></div>
             </div>
             <div class="sidebar-card-bottom">
-              <span style="color:var(--neon-green); font-weight:700;">● NOMINAL</span>
+              <span style="color:var(--neon-green); font-weight:700;">● EN RANGO</span>
               <span class="sensor-count-tag">42 Sensores</span>
             </div>
           </div>
@@ -632,29 +633,29 @@
             </div>
             <div class="sidebar-kwh-value">1,260,000 <span>kWh</span></div>
             <div class="sidebar-submetrics-row">
-              <div><span class="label">Ratio</span><span class="val">6.08</span></div>
-              <div><span class="label">Costo</span><span class="val">$151k</span></div>
-              <div><span class="label">Desv</span><span class="val" style="color:var(--neon-green)">-3.1%</span></div>
+              <div><span class="label">Intens.</span><span class="val">6,08</span></div>
+              <div><span class="label">Costo</span><span class="val">$604,8 M COP</span></div>
+              <div><span class="label">Desv.</span><span class="val" style="color:var(--neon-green)">-3,1%</span></div>
             </div>
             <div class="sidebar-card-bottom">
-              <span style="color:var(--neon-green); font-weight:700;">● NOMINAL</span>
+              <span style="color:var(--neon-green); font-weight:700;">● EN RANGO</span>
               <span class="sensor-count-tag">48 Sensores</span>
             </div>
           </div>
 
-          <!-- 3. RC Energy & Gas (Active Highlighted) -->
+          <!-- 3. RC Energía y Gas (selección activa) -->
           <div class="sidebar-battery-card danger active" data-plant-id="rc_energy" tabindex="0" role="button">
             <div class="battery-terminal terminal-positive"></div>
             <div class="battery-terminal terminal-negative"></div>
             <div class="sidebar-card-top">
-              <span class="sidebar-plant-name">3. RC Energy & Gas</span>
+              <span class="sidebar-plant-name">3. RC Energía y Gas</span>
               <span class="sidebar-active-badge">ACTIVO</span>
             </div>
             <div class="sidebar-kwh-value" style="color:var(--fire-red);">864,000 <span>kWh</span></div>
             <div class="sidebar-submetrics-row">
-              <div><span class="label">Ratio</span><span class="val">4.32</span></div>
-              <div><span class="label">Costo</span><span class="val">$103k</span></div>
-              <div><span class="label">Desv</span><span class="val" style="color:var(--fire-red)">+10.8%</span></div>
+              <div><span class="label">Intens.</span><span class="val">4,32</span></div>
+              <div><span class="label">Costo</span><span class="val">$414,7 M COP</span></div>
+              <div><span class="label">Desv.</span><span class="val" style="color:var(--fire-red)">+10,8%</span></div>
             </div>
             <div class="sidebar-card-bottom">
               <span style="color:var(--fire-red); font-weight:700;">▲ SOBRECONSUMO</span>
@@ -669,6 +670,10 @@
 
         <!-- Sidebar Actions Section -->
         <div class="sidebar-actions-section">
+          <button id="btn-open-intelligent-analysis" class="sidebar-action-btn intelligent-action" type="button">
+            <span aria-hidden="true">✦</span>
+            Análisis inteligente e informe
+          </button>
           <button id="btn-open-setpoint-modal" class="sidebar-action-btn" type="button">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="4" y1="21" x2="4" y2="14"/>
@@ -681,7 +686,7 @@
               <line x1="9" y1="8" x2="15" y2="8"/>
               <line x1="17" y1="16" x2="23" y2="16"/>
             </svg>
-            Ajustar Setpoint Quemadores
+            Simular punto de ajuste térmico (RC)
           </button>
 
           <button id="btn-download-scada-csv" class="sidebar-action-btn" type="button">
@@ -690,7 +695,11 @@
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Descargar Logs SCADA (.CSV)
+            Descargar datos de la planta (.CSV)
+          </button>
+          <button id="btn-delete-current-plant" class="sidebar-action-btn danger-action" type="button" hidden>
+            <span aria-hidden="true">×</span>
+            Eliminar planta registrada
           </button>
         </div>
       </aside>
@@ -707,9 +716,9 @@
               ← Vista General Plantas
             </button>
             <span style="color:var(--text-muted)">/</span>
-            <span style="color:var(--text-muted); font-size:11px; font-weight:700;">PLANT ENERGY CONSOLE</span>
+            <span style="color:var(--text-muted); font-size:11px; font-weight:700;">CONSOLA ENERGÉTICA DE PLANTA</span>
             <span style="color:var(--text-muted)">/</span>
-            <h1 id="detail-current-plant-name" class="plant-current-title">3. RC Energy & Gas</h1>
+            <h1 id="detail-current-plant-name" class="plant-current-title">3. RC Energía y Gas</h1>
           </div>
 
           <div class="detail-top-status">
@@ -738,8 +747,8 @@
           <!-- 2. ENERGY COST -->
           <div id="detail-card-cost" class="detail-kpi-card">
             <span class="detail-kpi-title">Costo energía</span>
-            <div id="detail-kpi-cost" class="detail-kpi-val">$103,680 USD</div>
-            <div id="detail-kpi-cost-context" class="detail-kpi-context">Tarifa neta: $0.120 / kWh</div>
+            <div id="detail-kpi-cost" class="detail-kpi-val">$414.720.000</div>
+            <div id="detail-kpi-cost-context" class="detail-kpi-context">Tarifa estimada: $480 COP / kWh</div>
             <div class="detail-kpi-trend-row">
               <span id="detail-kpi-cost-trend" class="trend-chip trend-negative">↑ 6.4% desmejora</span>
               <span class="trend-period">vs corte anterior</span>
@@ -782,7 +791,7 @@
 
           <!-- 6. ESTADO SCADA -->
           <div id="detail-card-scada" class="detail-kpi-card">
-            <span class="detail-kpi-title">Estado SCADA</span>
+            <span id="detail-kpi-status-title" class="detail-kpi-title">Estado SCADA</span>
             <div id="detail-kpi-scada-status" class="detail-kpi-val red">ALERTA CONSUMO ALTO</div>
             <div id="detail-kpi-scada-sensors" class="detail-kpi-context">54 Sensores IoT</div>
             <div class="detail-kpi-trend-row">
@@ -795,22 +804,22 @@
         <!-- ------------------------------------------------------------------
              MIDDLE ROW: CHARTS SECTION (Z-PATTERN TOP-RIGHT)
              ------------------------------------------------------------------ -->
-        <div class="detail-charts-grid">
+        <div id="detail-charts-grid" class="detail-charts-grid">
           <!-- Chart 1: Time Series Real vs Budget kWh -->
           <div class="chart-card">
             <div class="chart-header">
               <div class="chart-title-wrap">
-                <span class="chart-title">
+                <span id="consumption-chart-title" class="chart-title">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                   </svg>
-                  Energy Consumption
+                  Consumo de energía
                 </span>
-                <span class="chart-subtitle">Real (Púrpura) vs Meta Máx 38,400 kWh/d (Línea)</span>
+                <span id="consumption-chart-subtitle" class="chart-subtitle">Real (Púrpura) vs Meta Máx 38,400 kWh/d (Línea)</span>
               </div>
               <div class="chart-legend-box">
                 <span style="color:var(--clarios-purple-light)">● Real</span>
-                <span style="color:var(--amber-warn)">--- Meta</span>
+                <span id="consumption-chart-legend-reference" style="color:var(--amber-warn)">--- Meta</span>
               </div>
             </div>
 
@@ -839,7 +848,7 @@
           </div>
 
           <!-- Chart 3: RC Gas Monitor -->
-          <div class="chart-card">
+          <div id="gas-monitor-card" class="chart-card">
             <div class="chart-header">
               <div class="chart-title-wrap">
                 <span class="chart-title">
@@ -854,7 +863,7 @@
 
             <div class="gas-stats-row">
               <div class="gas-stat-item">
-                <span id="gas-flow-high" class="gas-stat-val highlight">1.8 Bar High</span>
+                <span id="gas-flow-high" class="gas-stat-val highlight">1,8 bar · presión alta</span>
                 <span class="gas-stat-lbl">Presión Pico</span>
               </div>
               <div class="gas-stat-item">
@@ -866,6 +875,103 @@
             <svg id="gas-chart-svg" class="gas-chart-svg"></svg>
           </div>
         </div>
+
+        <!-- Analítica estratégica disponible cuando la planta tiene dataset mensual estructurado -->
+        <section id="strategic-analytics-section" class="strategic-analytics-section" hidden>
+          <div class="strategic-analytics-header">
+            <div>
+              <span class="analytics-kicker">ANALÍTICA MENSUAL · DECISIÓN OPERATIVA</span>
+              <h2 id="analytics-title">Lectura estratégica F&amp;A</h2>
+              <p id="analytics-summary">Cruce de consumo, producción, intensidad, presupuesto y costo.</p>
+            </div>
+            <div class="analytics-header-badges">
+              <span id="analytics-period-badge" class="analytics-badge">CORTE JUL 2026</span>
+              <span id="analytics-source-badge" class="analytics-badge source">JSON VALIDADO</span>
+            </div>
+          </div>
+
+          <div class="analytics-decision-grid" aria-label="Señales principales para decisión">
+            <article id="analytics-signal-consumption" class="analytics-signal-card">
+              <span class="analytics-signal-label">Consumo mensual</span>
+              <strong id="analytics-consumption-value">—</strong>
+              <span id="analytics-consumption-detail" class="analytics-signal-detail">—</span>
+            </article>
+            <article id="analytics-signal-production" class="analytics-signal-card">
+              <span class="analytics-signal-label">Producción</span>
+              <strong id="analytics-production-value">—</strong>
+              <span id="analytics-production-detail" class="analytics-signal-detail">—</span>
+            </article>
+            <article id="analytics-signal-intensity" class="analytics-signal-card">
+              <span class="analytics-signal-label">Intensidad energética</span>
+              <strong id="analytics-intensity-value">—</strong>
+              <span id="analytics-intensity-detail" class="analytics-signal-detail">—</span>
+            </article>
+            <article id="analytics-signal-budget" class="analytics-signal-card">
+              <span class="analytics-signal-label">Brecha vs presupuesto</span>
+              <strong id="analytics-budget-value">—</strong>
+              <span id="analytics-budget-detail" class="analytics-signal-detail">—</span>
+            </article>
+            <article id="analytics-signal-cost" class="analytics-signal-card">
+              <span class="analytics-signal-label">Costo energético</span>
+              <strong id="analytics-cost-value">—</strong>
+              <span id="analytics-cost-detail" class="analytics-signal-detail">—</span>
+            </article>
+          </div>
+
+          <div class="analytics-main-grid">
+            <article class="analytics-panel analytics-control-panel">
+              <div class="analytics-panel-heading">
+                <div>
+                  <span class="analytics-kicker">CONTROL ESTADÍSTICO · 24 MESES</span>
+                  <h3>Intensidad real vs rango esperado y presupuesto</h3>
+                </div>
+                <div class="analytics-chart-legend" aria-label="Leyenda del gráfico">
+                  <span class="real">Real</span>
+                  <span class="expected">Esperado</span>
+                  <span class="budget">Presupuesto</span>
+                  <span class="band">Rango</span>
+                </div>
+              </div>
+              <div class="analytics-chart-wrap">
+                <svg id="analytics-intensity-chart" class="analytics-intensity-chart" viewBox="0 0 760 280" role="img" aria-label="Serie mensual de intensidad energética"></svg>
+              </div>
+              <p id="analytics-control-insight" class="analytics-callout danger">—</p>
+            </article>
+
+            <article class="analytics-panel">
+              <div class="analytics-panel-heading">
+                <div>
+                  <span class="analytics-kicker">COMPARACIÓN POR PROCESO</span>
+                  <h3>¿Dónde actuar primero?</h3>
+                </div>
+              </div>
+              <div id="analytics-process-grid" class="analytics-process-grid"></div>
+            </article>
+          </div>
+
+          <div class="analytics-lower-grid">
+            <article class="analytics-panel">
+              <div class="analytics-panel-heading">
+                <div>
+                  <span class="analytics-kicker">ALERTAS DEL ÚLTIMO CORTE</span>
+                  <h3 id="analytics-alert-title">Alertas analíticas</h3>
+                </div>
+              </div>
+              <div id="analytics-alert-list" class="analytics-alert-list"></div>
+            </article>
+
+            <article class="analytics-panel">
+              <div class="analytics-panel-heading">
+                <div>
+                  <span class="analytics-kicker">COBERTURA Y CALIDAD</span>
+                  <h3>Qué tan confiable es la lectura</h3>
+                </div>
+              </div>
+              <div id="analytics-coverage-list" class="analytics-coverage-list"></div>
+              <p class="analytics-data-note">Los campos de costo se interpretan en COP. El archivo no contiene sensores, gas, emisiones ni capacidad contratada; esos conceptos no se infieren.</p>
+            </article>
+          </div>
+        </section>
 
         <!-- ------------------------------------------------------------------
              BOTTOM ROW: AUTOMOTIVE TACHOMETER & PLANT ENERGY DIAGNOSTIC
@@ -882,7 +988,7 @@
                 </svg>
                 Velocímetro de Demanda Eléctrica
               </span>
-              <span id="tachometer-cluster-sub" class="tachometer-cluster-sub">SCADA · RC Energy &amp; Gas</span>
+              <span id="tachometer-cluster-sub" class="tachometer-cluster-sub">SCADA · RC Energía y Gas</span>
             </div>
 
             <div class="tachometer-body">
@@ -999,7 +1105,7 @@
 
                 <div class="calibration-item">
                   <div class="calibration-row-top">
-                    <span class="cal-name">Capacidad Máxima Contratada</span>
+                    <span id="cal-capacidad-name" class="cal-name">Capacidad Máxima Contratada</span>
                     <span id="cal-capacidad-val" class="cal-val">950,000 kWh</span>
                   </div>
                   <span id="cal-capacidad-sub" class="cal-sub">Margen contratado: 86,000 kWh</span>
@@ -1025,9 +1131,9 @@
                   </svg>
                 </div>
                 <div class="diagnostic-heading-wrap">
-                  <h3 class="diagnostic-title">Check Engine: Plant Energy Diagnostic</h3>
+                  <h3 class="diagnostic-title">Diagnóstico energético de la planta</h3>
                   <div class="diagnostic-badge-row">
-                    <span id="diag-trip-badge" class="diagnostic-trip-badge">CRITICAL TRIP ADVISORY</span>
+                    <span id="diag-trip-badge" class="diagnostic-trip-badge">AVISO CRÍTICO DE OPERACIÓN</span>
                   </div>
                 </div>
               </div>
@@ -1036,21 +1142,21 @@
                 La demanda total supera el presupuesto en 10.8%; la intensidad unitaria está 8.5% sobre la meta (4.32 vs 3.98 kWh/u). Se detectó un pico térmico en los hornos de fundición.
               </p>
 
-              <div class="diagnostic-meta-strip">
+              <div id="diagnostic-meta-strip" class="diagnostic-meta-strip">
                 Timestamp: 2024-09-28 14:32:09 CST • Gateway: #03-RC-MODBUS
               </div>
             </div>
 
             <div class="diagnostic-actions-row">
               <button id="btn-diag-ack" class="btn-diag-ack" type="button">
-                Acknowledge Fault
+                Confirmar alerta local
               </button>
               <button id="btn-diag-inspect" class="btn-diag-inspect" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                   <circle cx="12" cy="12" r="3"/>
                 </svg>
-                Inspect SCADA
+                Ver datos del corte
               </button>
             </div>
           </div>
@@ -1102,7 +1208,7 @@
       <section class="lineage-card" aria-label="Flujo de transformación de datos">
         <div class="section-heading-row">
           <div>
-            <span class="source-section-kicker">DATA LINEAGE</span>
+            <span class="source-section-kicker">LINAJE DE DATOS</span>
             <h2>Del archivo de origen a la decisión</h2>
           </div>
           <span class="lineage-badge">ISO 50001 • CONTROLADO</span>
@@ -1112,7 +1218,7 @@
           <div class="lineage-arrow">→</div>
           <div class="lineage-step"><span>02</span><strong>Validación</strong><small>Planta, consumo y presupuesto</small></div>
           <div class="lineage-arrow">→</div>
-          <div class="lineage-step"><span>03</span><strong>Transformación</strong><small>Costo, ratio y desviación</small></div>
+          <div class="lineage-step"><span>03</span><strong>Transformación</strong><small>Costo, intensidad y desviación</small></div>
           <div class="lineage-arrow">→</div>
           <div class="lineage-step"><span>04</span><strong>Visualización</strong><small>KPIs y alertas accionables</small></div>
         </div>
@@ -1164,14 +1270,14 @@
     <div class="footer-left">
       <div class="footer-item">
         <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios Logo" class="footer-clarios-logo">
-        <span>CLARIOS SCADA TELEMETRY NETWORK • NODE MONTERREY RC-01</span>
+        <span>RED DE TELEMETRÍA CLARIOS SCADA • NODO MONTERREY RC-01</span>
       </div>
       <div class="footer-item">
-        <span>ISO 50001 Energy Management</span>
+        <span>Gestión de la energía ISO 50001</span>
       </div>
     </div>
     <div>
-      © 2024 Clarios Plant Operations. All rights reserved.
+      © 2024 Operaciones de Planta Clarios. Todos los derechos reservados.
     </div>
   </footer>
 
@@ -1189,7 +1295,7 @@
           <div class="brand-name">
             CLARIOS <span class="brand-badge">SCADA</span>
           </div>
-          <div class="brand-subtitle">MOBILE CONSOLE</div>
+          <div class="brand-subtitle">CONSOLA MÓVIL</div>
         </div>
       </div>
       <button id="btn-close-drawer" class="btn-close-drawer" type="button" aria-label="Cerrar Menú">&times;</button>
@@ -1218,14 +1324,14 @@
           </button>
           <button class="drawer-nav-btn danger" data-nav-target="plant" data-plant-id="rc_energy" type="button">
             <span class="tab-dot" style="background:var(--fire-red)"></span>
-            <span>3. RC Energy & Gas (Alerta)</span>
+            <span>3. RC Energía y Gas (Alerta)</span>
           </button>
         </div>
       </div>
 
       <!-- Section 2: Filtro de Período -->
       <div class="drawer-section">
-        <span class="drawer-section-title">Período Operativo</span>
+        <span id="drawer-period-title" class="drawer-section-title">Período · F&amp;A</span>
         <div class="drawer-filter-row">
           <select id="drawer-select-month" class="scada-select" title="Mes Operativo">
             <option value="0">Enero</option>
@@ -1265,7 +1371,7 @@
             <line x1="20" y1="21" x2="20" y2="16"/>
             <line x1="20" y1="12" x2="20" y2="3"/>
           </svg>
-          Ajustar Setpoint Quemadores
+          Simular punto de ajuste térmico (RC)
         </button>
         <button id="drawer-btn-report" class="drawer-action-btn" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1273,7 +1379,7 @@
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          Descargar Informe Consolidado
+          Análisis inteligente e informe
         </button>
         <button id="drawer-btn-csv" class="drawer-action-btn" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1281,14 +1387,14 @@
             <polyline points="14 2 14 8 20 8"/>
             <line x1="12" y1="18" x2="12" y2="12"/>
           </svg>
-          Descargar Logs SCADA (.CSV)
+          Descargar datos de la planta (.CSV)
         </button>
       </div>
 
       <!-- Section 4: Telemetría de Nodo y Certificación -->
       <div class="drawer-status-card">
         <div class="drawer-status-node">NODO: MONTERREY RC-01</div>
-        <div class="drawer-status-sync">● CONEXIÓN MODBUS ACTIVA (12ms)</div>
+        <div class="drawer-status-sync">● MODO DEMOSTRATIVO · SIN CONEXIÓN MODBUS</div>
         <div class="drawer-status-iso">Validación ISO 50001 Certificada</div>
       </div>
     </div>
@@ -1306,60 +1412,82 @@
       <div class="modal-header">
         <h3 id="modal-add-plant-title" class="modal-title">
           <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios" class="modal-brand-logo">
-          Registrar fábrica en la red SCADA
+          Registrar fábrica desde archivo
         </h3>
         <button id="btn-close-add-plant" class="modal-close-btn" type="button" aria-label="Cerrar modal">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="form-intro">La nueva fábrica tendrá una tarjeta propia y reutilizará automáticamente la vista completa de detalle. Sus KPIs se compararán contra el corte anterior ingresado.</p>
+        <p class="form-intro">Escribe el nombre y carga el Excel, CSV o JSON procesado. El dashboard detectará los períodos, procesos, consumo, producción, intensidad, presupuesto, costos y rangos disponibles; los KPIs se compararán automáticamente contra el corte anterior.</p>
         <div class="plant-form-grid">
           <label class="form-field form-field-wide">
             <span>Nombre de la planta *</span>
             <input id="plant-name-input" name="plantName" type="text" maxlength="60" placeholder="Ej. Planta Guadalajara AGM" required>
           </label>
-          <label class="form-field">
-            <span>Código / módulo *</span>
-            <input id="plant-tag-input" name="plantTag" type="text" maxlength="24" placeholder="MOD-04-GDL" required>
-          </label>
-          <label class="form-field">
-            <span>Nodo SCADA</span>
-            <input id="plant-node-input" name="plantNode" type="text" maxlength="32" placeholder="NODE-GDL-AGM-01">
-          </label>
-          <label class="form-field">
-            <span>Consumo actual (kWh) *</span>
-            <input id="plant-kwh-input" name="currentKwh" type="number" min="1" step="1" placeholder="720000" required>
-          </label>
-          <label class="form-field">
-            <span>Corte anterior (kWh) *</span>
-            <input id="plant-previous-kwh-input" name="previousKwh" type="number" min="1" step="1" placeholder="745000" required>
-          </label>
-          <label class="form-field">
-            <span>Presupuesto (kWh) *</span>
-            <input id="plant-budget-input" name="budgetKwh" type="number" min="1" step="1" placeholder="760000" required>
-          </label>
-          <label class="form-field">
-            <span>Capacidad máxima (kWh) *</span>
-            <input id="plant-capacity-input" name="maxCapacityKwh" type="number" min="1" step="1" placeholder="900000" required>
-          </label>
-          <label class="form-field">
-            <span>Unidades producidas *</span>
-            <input id="plant-production-input" name="productionUnits" type="number" min="1" step="1" placeholder="200000" required>
-          </label>
-          <label class="form-field">
-            <span>Sensores conectados</span>
-            <input id="plant-sensors-input" name="sensorsCount" type="number" min="0" step="1" value="24">
-          </label>
-          <label class="form-field form-field-wide">
-            <span>Link del Excel o fuente (opcional)</span>
-            <input id="plant-source-input" name="sourceUrl" type="url" maxlength="300" placeholder="https://.../telemetria-planta.xlsx">
-            <small>El vínculo aparecerá en Fuentes de Datos para consulta y auditoría.</small>
-          </label>
+          <div class="form-field form-field-wide">
+            <span>Archivo de datos *</span>
+            <div id="plant-file-dropzone" class="plant-file-dropzone">
+              <input id="plant-data-file-input" name="plantDataFile" type="file" accept=".xlsx,.xls,.csv,.json" hidden>
+              <div id="plant-file-empty-state" class="plant-file-empty-state">
+                <strong>Arrastra el archivo aquí</strong>
+                <span>o selecciónalo desde tu equipo</span>
+                <button id="btn-select-plant-file" class="btn-file-select" type="button">Seleccionar archivo</button>
+              </div>
+              <div id="plant-file-selected-state" class="plant-file-selected-state" hidden>
+                <div class="plant-file-selected-copy">
+                  <strong id="plant-selected-file-name"></strong>
+                  <span id="plant-selected-file-meta"></span>
+                </div>
+                <div class="plant-file-selected-actions">
+                  <button id="btn-replace-plant-file" class="btn-ghost-sm" type="button">Cambiar</button>
+                  <button id="btn-remove-plant-file" class="btn-file-remove" type="button">Quitar</button>
+                </div>
+              </div>
+            </div>
+            <small id="plant-file-status" role="status" aria-live="polite">Formatos admitidos: XLSX, XLS, CSV y JSON · máximo 15 MB.</small>
+          </div>
+        </div>
+        <div class="plant-import-note">
+          <strong>Detección automática</strong>
+          <span>El archivo debe contener por lo menos dos cortes mensuales comparables. El procesamiento ocurre localmente en este navegador.</span>
         </div>
         <div id="add-plant-form-error" class="form-error" role="alert" hidden></div>
       </div>
       <div class="modal-footer">
         <button id="btn-cancel-add-plant" class="btn-ghost-sm" type="button">Cancelar</button>
-        <button class="btn-primary-purple" type="submit">Crear vista de planta</button>
+        <button id="btn-submit-add-plant" class="btn-primary-purple" type="submit">Analizar archivo y crear planta</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Eliminar planta registrada -->
+<div id="modal-delete-plant" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-delete-plant-title">
+  <div class="modal-dialog">
+    <form id="form-delete-plant">
+      <div class="modal-header">
+        <h3 id="modal-delete-plant-title" class="modal-title">Eliminar planta registrada</h3>
+        <button id="btn-close-delete-plant" class="modal-close-btn" type="button" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="form-intro">Vas a eliminar <strong id="delete-plant-name"></strong> y sus datos guardados localmente. Esta acción no afecta el archivo original.</p>
+        <div class="security-code-panel">
+          <div>
+            <span class="security-code-label">Código temporal</span>
+            <code id="delete-generated-code" class="security-code-value"></code>
+          </div>
+          <button id="btn-copy-delete-code" class="btn-ghost-sm" type="button">Copiar código</button>
+        </div>
+        <div class="security-warning" role="alert">Copia este código y pégalo en el campo siguiente. El código deja de ser válido al cerrar esta ventana.</div>
+        <label class="form-field">
+          <span>Pega el código temporal *</span>
+          <input id="delete-security-code-input" name="securityCode" type="text" maxlength="20" autocomplete="off" placeholder="CL-XXXX-XXXX" required>
+        </label>
+        <div id="delete-code-match-status" class="delete-code-match-status" role="status" aria-live="polite">Esperando confirmación del código.</div>
+        <div id="delete-plant-form-error" class="form-error" role="alert" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-delete-plant" class="btn-ghost-sm" type="button">Cancelar</button>
+        <button id="btn-confirm-delete-plant" class="btn-danger" type="submit" disabled>Eliminar definitivamente</button>
       </div>
     </form>
   </div>
@@ -1371,97 +1499,122 @@
     <div class="modal-header">
       <h3 id="modal-setpoint-title" class="modal-title">
         <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios" class="modal-brand-logo">
-        Calibración de Setpoint Térmico - Quemadores Hornos RC
+        Simulación del punto de ajuste térmico · RC Energía y Gas
       </h3>
       <button id="btn-close-setpoint" class="modal-close-btn" type="button" aria-label="Cerrar modal">&times;</button>
     </div>
     <div class="modal-body">
       <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
-        Ajusta la temperatura y rampa térmica de los quemadores de gas en el área de fundición de bornes (Smelting Furnaces). Disminuir la temperatura a 430°C o menos normalizará el consumo dentro del presupuesto.
+        Esta es una simulación local de la planta RC. No lee ni escribe un PLC, Modbus o sistema SCADA real. Permite observar cómo cambiaría el escenario del tablero si el punto de ajuste térmico se redujera.
       </p>
 
       <div class="range-slider-wrap">
         <div class="range-slider-labels">
-          <span>Temperatura de Setpoint:</span>
+          <span>Temperatura del punto de ajuste:</span>
           <strong id="slider-val-display" style="color:var(--clarios-purple-light); font-size:14px;">470 °C</strong>
         </div>
         <input type="range" id="slider-burner-temp" class="custom-range-input" min="400" max="500" value="470" step="5">
         <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); font-family:var(--font-mono)">
           <span>400 °C (Modo Ahorro)</span>
-          <span>430 °C (Nominal ISO 50001)</span>
+          <span>430 °C (referencia del escenario)</span>
           <span>500 °C (Sobreconsumo Crítico)</span>
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button id="btn-cancel-setpoint" class="btn-ghost-sm" type="button">Cancelar</button>
-      <button id="btn-apply-setpoint" class="btn-primary-purple" type="button">Aplicar Setpoint a SCADA</button>
+      <button id="btn-apply-setpoint" class="btn-primary-purple" type="button">Aplicar simulación</button>
     </div>
   </div>
 </div>
 
-<!-- Modal 2: SCADA Inspector Live Log -->
+<!-- Modal 2: Evidencia del corte -->
 <div id="modal-inspect" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-inspect-title">
   <div class="modal-dialog">
     <div class="modal-header">
       <h3 id="modal-inspect-title" class="modal-title">
         <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios" class="modal-brand-logo">
-        Registro de Telemetría SCADA - Gateway Modbus #03-RC
+        <span id="data-inspector-title-text">Datos del corte seleccionado</span>
       </h3>
       <button id="btn-close-inspect" class="modal-close-btn" type="button" aria-label="Cerrar modal">&times;</button>
     </div>
-    <div class="modal-body" style="max-height:360px; overflow-y:auto;">
+    <div class="modal-body" style="max-height:420px; overflow-y:auto;">
+      <p id="data-inspector-context" class="form-intro"></p>
       <table class="scada-log-table">
         <thead>
           <tr>
-            <th>Timestamp</th>
-            <th>Sensor ID</th>
-            <th>Dirección Modbus</th>
-            <th>Valor Registrado</th>
+            <th>Período</th>
+            <th>Registro</th>
+            <th>Consumo</th>
+            <th>Intensidad</th>
             <th>Estado</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>14:32:09</td>
-            <td>SNS-TH-03A</td>
-            <td>40012 (HoldReg)</td>
-            <td>478.4 °C</td>
-            <td style="color:var(--fire-red)">TRIP HIGH</td>
-          </tr>
-          <tr>
-            <td>14:31:58</td>
-            <td>SNS-GAS-03</td>
-            <td>30004 (InputReg)</td>
-            <td>1.82 Bar</td>
-            <td style="color:var(--amber-warn)">WARN SPIKE</td>
-          </tr>
-          <tr>
-            <td>14:31:40</td>
-            <td>PWR-SUB-01</td>
-            <td>30018 (InputReg)</td>
-            <td>38,400 kW</td>
-            <td style="color:var(--fire-red)">OVER LIMIT</td>
-          </tr>
-          <tr>
-            <td>14:31:12</td>
-            <td>SNS-CHILL-01</td>
-            <td>40020 (HoldReg)</td>
-            <td>6.2 °C</td>
-            <td style="color:var(--neon-green)">NORMAL</td>
-          </tr>
-          <tr>
-            <td>14:30:55</td>
-            <td>FLOW-AIR-02</td>
-            <td>30002 (InputReg)</td>
-            <td>9,420 Nm³/h</td>
-            <td style="color:var(--neon-green)">NORMAL</td>
-          </tr>
-        </tbody>
+        <tbody id="data-inspector-body"></tbody>
       </table>
     </div>
     <div class="modal-footer">
-      <button id="btn-close-inspect-footer" class="btn-ghost-sm" type="button">Cerrar Inspector</button>
+      <button id="btn-close-inspect-footer" class="btn-ghost-sm" type="button">Cerrar detalle</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 3: Análisis inteligente de la planta -->
+<div id="modal-intelligent-analysis" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="intelligent-analysis-title">
+  <div class="modal-dialog analysis-modal-dialog">
+    <div class="modal-header">
+      <h3 id="intelligent-analysis-title" class="modal-title">
+        <img src="/assets/clarios-mark-BZLXPEF-.png" alt="Clarios" class="modal-brand-logo">
+        Análisis inteligente de la planta
+      </h3>
+      <button id="btn-close-intelligent-analysis" class="modal-close-btn" type="button" aria-label="Cerrar análisis">&times;</button>
+    </div>
+    <div class="modal-body analysis-modal-body">
+      <div class="analysis-method-note">
+        <strong>Análisis automatizado y explicable.</strong>
+        Compara el corte activo con el anterior, el presupuesto, los rangos estadísticos y la participación por proceso. No inventa causas ni reemplaza la validación del equipo operativo.
+      </div>
+
+      <section class="analysis-hero" aria-labelledby="analysis-plant-title">
+        <div>
+          <span id="analysis-period-label" class="analysis-eyebrow">Corte seleccionado</span>
+          <h4 id="analysis-plant-title">Planta</h4>
+          <p id="analysis-source-label"></p>
+        </div>
+        <div class="analysis-badges">
+          <span id="analysis-priority-badge" class="analysis-priority-badge neutral">Prioridad por calcular</span>
+          <span id="analysis-confidence-badge" class="analysis-confidence-badge">Confianza de datos</span>
+        </div>
+      </section>
+
+      <section class="analysis-section">
+        <h4>Lectura ejecutiva</h4>
+        <p id="analysis-executive-summary" class="analysis-executive-summary"></p>
+        <div id="analysis-metric-grid" class="analysis-metric-grid"></div>
+      </section>
+
+      <div class="analysis-columns">
+        <section class="analysis-section">
+          <h4>Qué se encontró</h4>
+          <ul id="analysis-findings-list" class="analysis-list"></ul>
+        </section>
+        <section class="analysis-section decision-section">
+          <h4>Decisiones sugeridas</h4>
+          <div id="analysis-decisions-list" class="analysis-decision-list"></div>
+        </section>
+      </div>
+
+      <section class="analysis-section analysis-limitations">
+        <h4>Alcance y datos faltantes</h4>
+        <ul id="analysis-limitations-list" class="analysis-list compact"></ul>
+      </section>
+    </div>
+    <div class="modal-footer analysis-modal-footer">
+      <span id="analysis-generated-at" class="analysis-generated-at"></span>
+      <div class="analysis-footer-actions">
+        <button id="btn-close-intelligent-analysis-footer" class="btn-ghost-sm" type="button">Cerrar</button>
+        <button id="btn-download-intelligent-report" class="btn-primary-purple" type="button">Descargar informe PDF</button>
+      </div>
     </div>
   </div>
 </div>

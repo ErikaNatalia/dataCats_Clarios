@@ -1,0 +1,440 @@
+/* Appearance tokens keep the existing Clarios purple and status colors in both themes. */
+:root {
+  color-scheme: dark;
+  --text-on-accent: #fff;
+  --chart-grid: rgba(255, 255, 255, .12);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-primary: #edf3fa;
+  --bg-secondary: #fff;
+  --bg-card: #fff;
+  --bg-card-hover: #f2f6ff;
+  --bg-surface: #f0f5fc;
+  --bg-overlay: rgba(22, 39, 67, .42);
+  --bg-card-glass: rgba(255, 255, 255, .96);
+  --text-main: #172b4d;
+  --text-secondary: #465c79;
+  --text-muted: #586e89;
+  --text-dim: #5a708d;
+  --clarios-purple-light: #6840d8;
+  --clarios-purple-glow: rgba(124, 77, 255, .15);
+  --clarios-purple-subtle: rgba(124, 77, 255, .07);
+  --neon-green: #087b4b;
+  --neon-green-bg: rgba(8, 123, 75, .08);
+  --neon-green-glow: rgba(8, 123, 75, .15);
+  --fire-red: #c52b46;
+  --fire-red-bg: rgba(197, 43, 70, .07);
+  --fire-red-glow: rgba(197, 43, 70, .14);
+  --amber-warn: #966000;
+  --amber-warn-bg: rgba(150, 96, 0, .08);
+  --cyan-telemetry: #15738b;
+  --cyan-glow: rgba(21, 115, 139, .12);
+  --border-subtle: rgba(49, 81, 126, .15);
+  --border-bright: rgba(49, 81, 126, .25);
+  --border-purple: rgba(124, 77, 255, .3);
+  --border-glass-top: rgba(49, 81, 126, .16);
+  --border-glass-side: rgba(49, 81, 126, .12);
+  --shadow-sm: 0 2px 4px rgba(29, 56, 96, .025), 0 8px 22px rgba(29, 56, 96, .045);
+  --shadow-md: 0 5px 12px rgba(29, 56, 96, .04), 0 16px 34px rgba(29, 56, 96, .07);
+  --shadow-lg: 0 12px 28px rgba(29, 56, 96, .07), 0 28px 60px rgba(29, 56, 96, .12);
+  --shadow-card-inset: inset 0 1px 0 rgba(255, 255, 255, .95);
+  --chart-grid: rgba(49, 81, 126, .13);
+  --surface-rgb: 239, 244, 251;
+  --light-blue-ink: #315f96;
+  --light-panel: #f6f9fe;
+}
+
+.nav-tab-btn.active, .btn-primary-purple, .sidebar-active-badge,
+.drawer-nav-btn.active, .diagnostic-trip-badge, .btn-diag-inspect,
+.analysis-decision-number, .battery-alert-tag.tag-danger,
+.battery-terminal.terminal-positive, .btn-card-action.btn-action-danger:hover {
+  color: var(--text-on-accent);
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 7px;
+  border: 1px solid var(--border-bright);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font: 600 11px var(--font-family);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.theme-switch-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 54px;
+  height: 29px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--clarios-purple-subtle);
+}
+
+.theme-switch-track svg { position: relative; z-index: 1; pointer-events: none; }
+.theme-switch-thumb {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--clarios-purple);
+  box-shadow: 0 2px 5px var(--clarios-purple-glow);
+  transition: transform var(--transition-normal);
+}
+.theme-switch[aria-checked="true"] .theme-switch-thumb { transform: translateX(25px); }
+.theme-switch[aria-checked="true"] .theme-icon-moon,
+.theme-switch[aria-checked="false"] .theme-icon-sun { color: #fff; }
+.theme-switch-label { min-width: 39px; padding-right: 3px; }
+
+:is(button, a, select, input, [tabindex]):focus-visible {
+  outline: 3px solid var(--clarios-purple-light);
+  outline-offset: 3px;
+}
+
+.currency-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.currency-note strong {
+  padding: 3px 8px;
+  border: 1px solid var(--border-purple);
+  border-radius: 6px;
+  color: var(--clarios-purple-light);
+  font: 700 11px var(--font-mono);
+}
+
+/* The light palette uses blue for structure, purple for the brand, and status colors for data. */
+[data-theme="light"] body::before {
+  opacity: 1;
+  background:
+    radial-gradient(ellipse 75% 65% at 100% 0%, rgba(190, 215, 250, .42), transparent 72%),
+    radial-gradient(ellipse 55% 50% at 0% 30%, rgba(220, 211, 255, .2), transparent 75%),
+    linear-gradient(180deg, #f2f7fd, #edf3fa);
+}
+[data-theme="light"] body::after { display: none; }
+[data-theme="light"] .scada-header {
+  background: rgba(255, 255, 255, .96);
+  border-bottom-color: #d9e3f0;
+  box-shadow: 0 3px 18px rgba(29, 56, 96, .07);
+}
+[data-theme="light"] .scada-subheader {
+  background: rgba(234, 242, 253, .88);
+  border-bottom-color: #d9e3f0;
+}
+[data-theme="light"] .scada-footer { background: rgba(230, 238, 249, .8); }
+[data-theme="light"] .brand-clarios-logo-img { filter: drop-shadow(0 2px 4px rgba(255, 102, 0, .12)); }
+[data-theme="light"] :is(.view-nav, .date-filter-group, .theme-switch) {
+  background: #f5f8fd;
+  border-color: #d6e1ef;
+  box-shadow: inset 0 1px 0 #fff;
+}
+[data-theme="light"] .nav-tab-btn.active { box-shadow: 0 3px 9px rgba(99, 55, 210, .18); }
+[data-theme="light"] :is(.btn-primary-purple, .btn-diag-inspect) {
+  border-color: #7042e7;
+  box-shadow: 0 4px 10px rgba(99, 55, 210, .17), inset 0 1px 0 rgba(255, 255, 255, .15);
+}
+[data-theme="light"] .btn-primary-purple:hover { box-shadow: 0 6px 16px rgba(99, 55, 210, .24); }
+[data-theme="light"] :is(.btn-ghost-sm, .btn-card-action, .btn-icon-ghost, .source-action-btn, .source-action-link) {
+  border-color: #cbd9eb;
+  background: #f6f9ff;
+  color: var(--light-blue-ink);
+}
+[data-theme="light"] :is(.btn-ghost-sm, .source-action-btn, .source-action-link):hover {
+  background: #eaf1ff;
+  border-color: #b5c9e4;
+  color: var(--clarios-purple-dark);
+}
+[data-theme="light"] .btn-card-action:hover { background: var(--clarios-purple); color: #fff; }
+[data-theme="light"] .btn-card-action.btn-action-danger { color: var(--fire-red); background: #fff2f4; border-color: #edc3cc; }
+[data-theme="light"] .btn-card-action.btn-action-danger:hover { background: var(--fire-red); color: #fff; }
+
+[data-theme="light"] :is(.kpi-card, .car-battery-card, .sidebar-battery-card,
+  .detail-kpi-card, .chart-card, .tachometer-card, .diagnostic-card,
+  .lineage-card, .sources-registry-card, .source-preview-card, .source-summary-card,
+  .strategic-analytics-section, .intelligent-analysis-section, .analysis-section,
+  .analysis-metric-card, .analytics-process-card, .analytics-panel,
+  .analysis-decision-card) {
+  background: #fff;
+  border-color: #d5e1ef;
+  box-shadow: var(--shadow-sm), var(--shadow-card-inset);
+}
+[data-theme="light"] :is(.landing-hero, .sources-hero, .analysis-hero) {
+  position: relative;
+  background: linear-gradient(112deg, #fff 20%, #f1f6ff 67%, #e4edfc 100%);
+  border-color: #c8d9ef;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 #fff;
+}
+[data-theme="light"] .landing-hero { padding: 28px 30px; }
+[data-theme="light"] .landing-hero::before {
+  width: 310px;
+  height: 310px;
+  right: -35px;
+  top: -145px;
+  border-color: rgba(104, 138, 203, .22);
+  background: linear-gradient(135deg, rgba(255, 255, 255, .8), rgba(199, 217, 249, .25));
+  box-shadow: 0 0 0 34px rgba(118, 158, 221, .05), 0 0 0 70px rgba(124, 77, 255, .025);
+}
+[data-theme="light"] .landing-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 28px;
+  bottom: 28px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, var(--clarios-purple), #8aafe6);
+}
+[data-theme="light"] .hero-tagline {
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 10px;
+  border: 1px solid rgba(124, 77, 255, .13);
+  border-radius: 6px;
+  background: rgba(124, 77, 255, .055);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  line-height: 1.65;
+}
+[data-theme="light"] .hero-heading { color: #183358; }
+[data-theme="light"] .hero-subtext { color: #4f6582; }
+[data-theme="light"] :is(.kpi-card, .detail-kpi-card, .source-summary-card) { border-radius: 14px; }
+[data-theme="light"] .kpi-card::before { background: #e9f1ff; filter: none; opacity: .7; z-index: 0; }
+[data-theme="light"] .kpi-card > * { position: relative; z-index: 1; }
+[data-theme="light"] .kpi-card::after { height: 3px; width: 54px; }
+[data-theme="light"] :is(.kpi-card, .detail-kpi-card):hover {
+  border-color: #bacbe6;
+  box-shadow: var(--shadow-md), inset 0 1px 0 #fff;
+}
+[data-theme="light"] .kpi-title { color: #516784; line-height: 1.5; letter-spacing: .9px; }
+[data-theme="light"] .kpi-value { font-family: var(--font-family); font-size: 34px; font-weight: 700; color: #183358; }
+[data-theme="light"] #landing-global-cost { font-size: clamp(24px, 1.65vw, 32px); }
+[data-theme="light"] .kpi-icon-wrap { border: 1px solid rgba(49, 81, 126, .08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7); }
+[data-theme="light"] :is(.kpi-baseline, .detail-kpi-trend-row, .battery-card-footer, .diagnostic-meta-strip, .blueprint-header-strip, .blueprint-footer-specs) {
+  border-color: #e1e9f4;
+}
+[data-theme="light"] .decision-strip {
+  border-color: #c9d9ef;
+  border-left: 3px solid var(--clarios-purple);
+  background: linear-gradient(110deg, #e7effd, #f5f8ff 65%);
+  box-shadow: 0 3px 12px rgba(29, 56, 96, .035);
+}
+[data-theme="light"] .decision-insight { border-left-color: var(--neon-green); background: rgba(255, 255, 255, .65); border-radius: 0 8px 8px 0; }
+[data-theme="light"] .decision-insight.priority { border-left-color: var(--fire-red); background: linear-gradient(90deg, #fff0f3, rgba(255, 255, 255, .65)); }
+[data-theme="light"] .decision-insight strong { color: #213c62; }
+
+[data-theme="light"] .blueprint-showcase-section {
+  background: linear-gradient(145deg, #f7faff, #edf4fd);
+  border-color: #ceddef;
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="light"] .blueprint-background-svg { opacity: .16; }
+[data-theme="light"] .car-battery-card {
+  border-color: #ccdbee;
+  box-shadow: 0 4px 14px rgba(29, 56, 96, .055), inset 0 1px 0 #fff;
+}
+[data-theme="light"] .car-battery-card.critical {
+  border-color: #e7bec8;
+  background: linear-gradient(180deg, #fff8fa, #fff 30%);
+}
+[data-theme="light"] .car-battery-card:not(.critical):hover {
+  border-color: #9d84e2;
+  box-shadow: var(--shadow-md), 0 0 0 1px rgba(124, 77, 255, .08);
+}
+[data-theme="light"] .car-battery-card.critical:hover {
+  border-color: var(--fire-red);
+  box-shadow: var(--shadow-md), 0 0 0 1px rgba(197, 43, 70, .08);
+}
+[data-theme="light"] .car-battery-card.active-plant { border-color: var(--clarios-purple); box-shadow: 0 0 0 2px var(--clarios-purple), var(--shadow-md); }
+[data-theme="light"] .battery-terminal { box-shadow: 0 2px 5px rgba(29, 56, 96, .15); }
+[data-theme="light"] .battery-terminal.terminal-positive { background: linear-gradient(180deg, #d95462, #b52540); border-color: #ad2b40; }
+[data-theme="light"] .battery-terminal.terminal-negative { background: linear-gradient(180deg, #60758f, #405675); border-color: #3d5574; }
+[data-theme="light"] .battery-terminal::before { text-shadow: none; }
+[data-theme="light"] .battery-rib { background: #dce5f1; }
+[data-theme="light"] :is(.battery-submetrics-grid, .sidebar-submetrics-row) { background: #f0f5fc; border: 1px solid #e1eaf6; }
+[data-theme="light"] :is(.battery-alert-tag, .diagnostic-icon-box, .diagnostic-card::before, .legend-dot, .pulse-dot) { box-shadow: none; }
+[data-theme="light"] .battery-alert-tag { letter-spacing: .4px; }
+[data-theme="light"] .battery-metric-kwh { letter-spacing: -.04em; }
+[data-theme="light"] .plant-sidebar { border-right-color: #d4dfed; box-shadow: 4px 0 20px rgba(29, 56, 96, .035); }
+[data-theme="light"] .sidebar-battery-card.active {
+  border-color: #9574e2;
+  background: linear-gradient(135deg, #f1ebff, #f8faff);
+  box-shadow: inset 3px 0 0 var(--clarios-purple), 0 3px 12px rgba(99, 55, 210, .06);
+}
+[data-theme="light"] .sidebar-battery-card.danger.active {
+  border-color: #dfa7b4;
+  background: linear-gradient(135deg, #fff0f3, #fff);
+  box-shadow: inset 3px 0 0 var(--fire-red), 0 3px 12px rgba(197, 43, 70, .05);
+}
+[data-theme="light"] .sidebar-action-btn.intelligent-action { color: var(--clarios-purple-dark); border-color: #d1c1f4; background: #f0eaff; box-shadow: none; }
+[data-theme="light"] .detail-top-bar { background: linear-gradient(110deg, #fff, #eaf2ff); border-color: #d2e0f1; }
+[data-theme="light"] .detail-kpi-title { letter-spacing: .08em; }
+[data-theme="light"] .strategic-analytics-section { background: #f5f8fe; border-color: #ccdcef; }
+[data-theme="light"] :is(.analytics-panel, .chart-card) { border-color: #d1dfef; }
+[data-theme="light"] :is(.analytics-panel-heading, .chart-header) { padding-bottom: 12px; border-bottom: 1px solid #e4ecf6; }
+[data-theme="light"] .analytics-chart-legend .band { color: #5688a0; }
+[data-theme="light"] :is(.analytics-callout.danger, .analysis-priority-badge.high) { color: var(--fire-red); }
+[data-theme="light"] .analytics-callout.danger { background: #fff2f5; border-color: #edc5cf; }
+[data-theme="light"] :is(.analytics-state-chip.negative, .analysis-priority-badge.high) { background: #fff0f3; border-color: #ebbfca; }
+[data-theme="light"] :is(.analytics-state-chip.positive, .analysis-priority-badge.low) { background: #eaf6ef; border-color: #c1e2d2; }
+[data-theme="light"] .lineage-step { background: linear-gradient(135deg, #f7faff, #edf4fd); border-color: #d5e2f1; }
+[data-theme="light"] .sources-table tbody tr:nth-child(even) { background: #f8faff; }
+[data-theme="light"] :is(.sources-table, .analytics-table) tbody tr:hover { background: #edf3ff; }
+[data-theme="light"] :is(.sources-table, .analytics-table) th { color: #35557e; border-bottom-color: #cfdeef; }
+[data-theme="light"] .mobile-drawer { box-shadow: -12px 0 48px rgba(25, 48, 84, .16); }
+[data-theme="light"] .drawer-header { border-bottom-color: #d6e2f2; }
+[data-theme="light"] .drawer-nav-btn.active { background: linear-gradient(135deg, var(--clarios-purple), var(--clarios-purple-dark)); box-shadow: 0 4px 10px rgba(99, 55, 210, .16); }
+[data-theme="light"] .drawer-nav-btn.active:hover { background: linear-gradient(135deg, var(--clarios-purple), var(--clarios-purple-dark)); color: #fff; }
+[data-theme="light"] .modal-dialog { border-color: #c9d8ec; box-shadow: var(--shadow-lg); }
+[data-theme="light"] :is(.analysis-method-note, .analysis-source-note, .analytics-data-note) { background: #edf5ff; border-color: #cbdff1; }
+[data-theme="light"] :is(.analysis-section, .analysis-decision-card) { box-shadow: none; }
+[data-theme="light"] .analysis-decision-number { background: var(--clarios-purple); }
+[data-theme="light"] .diagnostic-card.resolved .diagnostic-trip-badge { color: #fff; }
+
+/* Use the same semantic chart colors with enough weight on white surfaces. */
+[data-theme="light"] svg [stroke="#00E676"] { stroke: var(--neon-green); }
+[data-theme="light"] svg [fill="#00E676"] { fill: var(--neon-green); }
+[data-theme="light"] svg [stroke="#FF3D57"] { stroke: var(--fire-red); }
+[data-theme="light"] svg [fill="#FF3D57"] { fill: var(--fire-red); }
+[data-theme="light"] svg [stroke="#FFAB00"] { stroke: var(--amber-warn); }
+[data-theme="light"] svg [stroke="#9E7DFF"] { stroke: var(--clarios-purple-light); }
+[data-theme="light"] svg text[fill="#6C7689"] { fill: var(--text-muted); }
+[data-theme="light"] svg line[stroke="rgba(255, 255, 255, 0.05)"] { stroke: var(--chart-grid); }
+[data-theme="light"] .sparkline-svg :is(path, circle) { filter: none; }
+
+@media (min-width: 1760px) {
+  [data-theme="light"] .battery-cards-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+  [data-theme="light"] .car-battery-card { padding-inline: 18px; }
+  [data-theme="light"] .battery-metric-kwh { font-size: 28px; }
+  [data-theme="light"] .battery-metric-context { flex-wrap: wrap; }
+}
+@media (max-width: 768px) {
+  [data-theme="light"] .landing-hero { padding: 22px 20px; }
+  [data-theme="light"] .hero-tagline { font-size: 9px; letter-spacing: .7px; }
+  [data-theme="light"] .kpi-value { font-size: 30px; }
+}
+[data-theme="light"] .plant-sidebar,
+[data-theme="light"] .mobile-drawer,
+[data-theme="light"] .modal-dialog,
+[data-theme="light"] .scada-toast { background: var(--bg-card); }
+[data-theme="light"] :is(.drawer-header, .drawer-status-card, .sidebar-submetrics-row,
+  .modal-header, .modal-footer, .modal-body pre, .scada-select option, .sources-table th, .source-preview-content, .source-preview-empty,
+  .decision-strip, .analytics-table th, .analytics-alert-item, .analytics-coverage-item,
+  .analysis-source-note, .analysis-limitations, .analysis-finding) {
+  background: var(--light-panel);
+  color: var(--text-main);
+}
+[data-theme="light"] :is(.kpi-baseline.critical-context, .source-preview-content,
+  .analysis-summary, .analysis-summary p, .analysis-decision-card p) { color: var(--text-secondary); }
+[data-theme="light"] .hamburger-bar { background: var(--text-main); }
+[data-theme="light"] .analytics-chart-legend .real { color: var(--clarios-purple-light); }
+[data-theme="light"] .analytics-chart-legend .expected { color: var(--cyan-telemetry); }
+[data-theme="light"] .analytics-chart-legend .budget { color: var(--amber-warn); }
+[data-theme="light"] :is(.analytics-alert-item,
+  .analysis-signal.negative) { color: var(--fire-red); }
+[data-theme="light"] :is(.drawer-nav-btn:hover, .source-action-btn:hover, .source-action-link:hover) {
+  background: var(--clarios-purple-subtle);
+  color: var(--clarios-purple-light);
+}
+.drawer-nav-btn.active,
+.drawer-nav-btn.active:hover,
+.drawer-nav-btn.danger.active { color: var(--text-on-accent); }
+[data-theme="light"] .analysis-priority-badge.high { color: var(--fire-red); }
+[data-theme="light"] .analysis-priority-badge.medium { color: var(--amber-warn); }
+
+/* Let containers shrink. Tables scroll within their cards instead of widening the page. */
+.scada-header { gap: 18px; }
+.brand-section, .header-actions { flex-shrink: 0; }
+.view-nav { min-width: 0; }
+.btn-hamburger { display: flex; min-width: 44px; min-height: 44px; flex-shrink: 0; }
+.nav-tab-btn { white-space: nowrap; }
+.kpi-value-wrap { flex-wrap: wrap; min-width: 0; }
+#landing-global-cost { font-size: clamp(22px, 1.5vw, 29px); }
+.blueprint-header-strip { flex-wrap: wrap; gap: 14px; }
+.blueprint-title { flex: 1 1 240px; min-width: 0; }
+.blueprint-legend { flex-wrap: wrap; gap: 12px; }
+.blueprint-stamp-img { flex-shrink: 0; }
+.landing-content > *, .sources-content > *, .plant-main-content > *,
+.detail-charts-grid > *, .detail-bottom-grid > *, .strategic-analytics-section > *,
+.analytics-two-column > *, .analysis-metrics-grid > * { min-width: 0; }
+.sources-table-wrap { width: 100%; max-width: 100%; overscroll-behavior-x: contain; }
+.sources-hero-actions { flex-wrap: wrap; }
+.mobile-drawer { width: min(380px, 92vw); max-width: 92vw; height: 100dvh; }
+.drawer-header { flex-shrink: 0; }
+.drawer-body { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.btn-close-drawer { min-width: 44px; min-height: 44px; }
+.drawer-filter-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.drawer-filter-row select { min-width: 0; }
+.drawer-nav-btn .tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--clarios-purple-light); flex-shrink: 0; }
+
+@media (max-width: 1600px) {
+  .view-nav { display: none; }
+}
+
+@media (max-width: 1080px) {
+  .detail-charts-grid.structured-data { grid-template-columns: minmax(0, 1fr); }
+  .brand-subtitle { letter-spacing: .7px; }
+  .header-actions { gap: 10px; }
+}
+
+@media (max-width: 768px) {
+  .scada-header { min-height: 68px; height: auto; gap: 8px; padding: 9px 14px; }
+  .brand-section { gap: 9px; min-width: 0; }
+  .brand-name { font-size: 15px; letter-spacing: 1px; }
+  .brand-subtitle { max-width: 170px; font-size: 8px; letter-spacing: .3px; }
+  .header-actions { gap: 6px; }
+  .theme-switch { padding: 3px; }
+  .theme-switch-label { display: none; }
+  #btn-quick-report { min-width: 44px; min-height: 44px; justify-content: center; }
+  .scada-live-status { flex-wrap: wrap; gap: 6px; }
+  .status-badge-live { white-space: normal; }
+  .hero-heading { font-size: clamp(22px, 6vw, 30px); line-height: 1.2; overflow-wrap: anywhere; }
+  .hero-subtext { font-size: 13px; }
+  .sources-hero { padding: 20px 16px; }
+  .sources-hero-actions > * { flex: 1 1 180px; justify-content: center; min-height: 44px; }
+  .currency-note { align-items: flex-start; }
+  .plant-sidebar { padding: 18px 14px; }
+  .sidebar-battery-list { grid-template-columns: minmax(0, 1fr); }
+  .plant-main-content { padding: 18px 14px 32px; }
+  .detail-kpi-grid, .detail-charts-grid, .detail-bottom-grid, .analytics-main-grid, .analytics-lower-grid,
+  .analysis-metric-grid, .analysis-columns { grid-template-columns: minmax(0, 1fr); }
+  .strategic-analytics-section { padding: 16px 12px; }
+  .strategic-analytics-header, .analytics-panel-heading { flex-wrap: wrap; gap: 12px; }
+  .analytics-period-summary { width: 100%; }
+  .decision-insight strong, .decision-insight > span:last-child { white-space: normal; overflow: visible; }
+  .blueprint-legend { width: 100%; justify-content: flex-start; }
+  .modal-dialog { width: 100%; max-width: 100%; }
+  .modal-backdrop { padding: 12px; }
+  .modal-body { padding: 18px 14px; }
+  .modal-header { padding: 16px 14px; gap: 12px; }
+  .modal-footer { padding: 14px; gap: 10px; }
+  .analysis-table-wrap, .analytics-table-wrap { max-width: 100%; overflow-x: auto; }
+}
+
+@media (max-width: 390px) {
+  .scada-header { padding-inline: 10px; }
+  .brand-name { font-size: 13px; }
+  .brand-clarios-logo-img { height: 26px; }
+  .brand-subtitle { display: none; }
+  #btn-quick-report { display: none; } /* The same report is available in the menu. */
+  .header-actions { gap: 7px; }
+  .battery-cards-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch-thumb { transition: none; }
+}

@@ -1,0 +1,4 @@
+serie_id,fecha,turno,proceso,consumo,produccion,costo_unitario
+fya,2026-07-01,1,FORMACION,10250.5,520.3,700
+fya,2026-07-01,1,LINEA ACABADO PRINCIPAL,1800.0,410.0,700
+rc-gas,2026-07,,RC,65100,1581,1800

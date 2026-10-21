@@ -1,0 +1,318 @@
+{
+ "mes": "2026-10",
+ "dias_mes": 31,
+ "demo": true,
+ "descripcion": "Datos diarios de DEMOSTRACIÓN (1–10 oct 2026) derivados del pronóstico de octubre de cada planta; no son mediciones reales.",
+ "series": {
+  "ensamble": [
+   {
+    "fecha": "2026-10-01",
+    "consumo": 8249.2,
+    "produccion": 2617.5,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-02",
+    "consumo": 8485.1,
+    "produccion": 2724.3,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-03",
+    "consumo": 7260.9,
+    "produccion": 2221.1,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-04",
+    "consumo": 6633.0,
+    "produccion": 1924.0,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-05",
+    "consumo": 8279.1,
+    "produccion": 2798.2,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-06",
+    "consumo": 8424.5,
+    "produccion": 2783.9,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-07",
+    "consumo": 8304.6,
+    "produccion": 2789.4,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-08",
+    "consumo": 8322.9,
+    "produccion": 2650.4,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-09",
+    "consumo": 8456.6,
+    "produccion": 2615.2,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-10",
+    "consumo": 7612.3,
+    "produccion": 2301.3,
+    "costo_unitario": 531.79
+   }
+  ],
+  "orec": [
+   {
+    "fecha": "2026-10-01",
+    "consumo": 15678.9,
+    "produccion": 2246.2,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-02",
+    "consumo": 15149.8,
+    "produccion": 2141.5,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-03",
+    "consumo": 14394.1,
+    "produccion": 1964.5,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-04",
+    "consumo": 12869.8,
+    "produccion": 1590.9,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-05",
+    "consumo": 14933.2,
+    "produccion": 2208.4,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-06",
+    "consumo": 15528.1,
+    "produccion": 2170.2,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-07",
+    "consumo": 15404.5,
+    "produccion": 2159.5,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-08",
+    "consumo": 15709.3,
+    "produccion": 2288.4,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-09",
+    "consumo": 14869.4,
+    "produccion": 2222.4,
+    "costo_unitario": 541.18
+   },
+   {
+    "fecha": "2026-10-10",
+    "consumo": 13764.2,
+    "produccion": 1914.1,
+    "costo_unitario": 541.18
+   }
+  ],
+  "fya": [
+   {
+    "fecha": "2026-10-01",
+    "consumo": 33955.1,
+    "produccion": 1750.2,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-02",
+    "consumo": 34228.1,
+    "produccion": 1779.0,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-03",
+    "consumo": 30835.2,
+    "produccion": 1441.8,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-04",
+    "consumo": 27626.3,
+    "produccion": 1265.6,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-05",
+    "consumo": 35373.6,
+    "produccion": 1762.3,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-06",
+    "consumo": 34013.1,
+    "produccion": 1721.3,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-07",
+    "consumo": 34175.3,
+    "produccion": 1839.1,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-08",
+    "consumo": 32932.5,
+    "produccion": 1767.1,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-09",
+    "consumo": 33216.3,
+    "produccion": 1715.3,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-10",
+    "consumo": 31324.1,
+    "produccion": 1431.7,
+    "costo_unitario": 531.79
+   }
+  ],
+  "rc-energia": [
+   {
+    "fecha": "2026-10-01",
+    "consumo": 10555.7,
+    "produccion": 54.1,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-02",
+    "consumo": 10876.2,
+    "produccion": 52.7,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-03",
+    "consumo": 9602.5,
+    "produccion": 44.2,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-04",
+    "consumo": 8816.9,
+    "produccion": 37.9,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-05",
+    "consumo": 10875.6,
+    "produccion": 51.9,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-06",
+    "consumo": 11327.2,
+    "produccion": 54.3,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-07",
+    "consumo": 10954.4,
+    "produccion": 52.3,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-08",
+    "consumo": 10734.5,
+    "produccion": 53.0,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-09",
+    "consumo": 10903.9,
+    "produccion": 53.6,
+    "costo_unitario": 531.79
+   },
+   {
+    "fecha": "2026-10-10",
+    "consumo": 10117.3,
+    "produccion": 44.2,
+    "costo_unitario": 531.79
+   }
+  ],
+  "rc-gas": [
+   {
+    "fecha": "2026-10-01",
+    "consumo": 4664.4,
+    "produccion": 51.7,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-02",
+    "consumo": 4565.2,
+    "produccion": 50.9,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-03",
+    "consumo": 4302.8,
+    "produccion": 45.0,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-04",
+    "consumo": 3803.7,
+    "produccion": 36.3,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-05",
+    "consumo": 4902.3,
+    "produccion": 52.0,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-06",
+    "consumo": 4736.9,
+    "produccion": 50.8,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-07",
+    "consumo": 4866.1,
+    "produccion": 52.1,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-08",
+    "consumo": 4764.3,
+    "produccion": 53.7,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-09",
+    "consumo": 4868.1,
+    "produccion": 54.2,
+    "costo_unitario": 1799.42
+   },
+   {
+    "fecha": "2026-10-10",
+    "consumo": 4412.0,
+    "produccion": 43.5,
+    "costo_unitario": 1799.42
+   }
+  ]
+ }
+}

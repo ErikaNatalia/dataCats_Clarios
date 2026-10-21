@@ -1,0 +1,12 @@
+node_modules/
+npm-debug.log*
+/output/
+__pycache__/
+.venv/
+
+# Backend: datos crudos de Clarios y archivos de trabajo (no se publican)
+backend/Base de datos.xlsx
+backend/output/datos_limpios.csv
+backend/output/registros_detalle.csv
+backend/entrada/fuentes/
+backend/entrada/registros/*.csv

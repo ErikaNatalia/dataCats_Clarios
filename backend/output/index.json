@@ -1,0 +1,163 @@
+{
+ "generado": "2026-10-19T20:20:14",
+ "fecha_fin_comun": "2026-06",
+ "series": [
+  {
+   "id": "ensamble",
+   "planta": "Ensamble",
+   "servicio": "energia",
+   "unidad": "kWh",
+   "archivo": "ensamble.json",
+   "periodo": {
+    "inicio": "2019-10",
+    "fin": "2026-07",
+    "meses": 82,
+    "fin_comun": "2026-06"
+   },
+   "procesos": [
+    "Ensamble",
+    "Linea 1",
+    "Linea 2",
+    "Linea 3",
+    "Linea 4"
+   ],
+   "ultimo_mes": {
+    "fecha": "2026-07",
+    "indice": 1.0,
+    "consumo": 279900.0,
+    "produccion": 81625.8864,
+    "intensidad": 3.4291,
+    "intensidad_ppto": 2.0118,
+    "desviacion_ppto": 0.7044,
+    "costo_unitario": 529.5777,
+    "costo_total": 148228803.2871
+   },
+   "n_alertas": 5,
+   "tiene_pronostico": true
+  },
+  {
+   "id": "orec",
+   "planta": "OREC",
+   "servicio": "energia",
+   "unidad": "kWh",
+   "archivo": "orec.json",
+   "periodo": {
+    "inicio": "2019-10",
+    "fin": "2026-06",
+    "meses": 81,
+    "fin_comun": "2026-06"
+   },
+   "procesos": [
+    "OREC",
+    "Rejillas",
+    "Cinta",
+    "Planta Oxido",
+    "Empaste Casting",
+    "Empaste Expanded",
+    "Empaste Cominco"
+   ],
+   "ultimo_mes": {
+    "fecha": "2026-06",
+    "indice": 1.0,
+    "consumo": 506000.0,
+    "produccion": 75433.477,
+    "intensidad": 6.7079,
+    "intensidad_ppto": 5.8608,
+    "desviacion_ppto": 0.1445,
+    "costo_unitario": 544.4111,
+    "costo_total": 275472013.2228
+   },
+   "n_alertas": 6,
+   "tiene_pronostico": true
+  },
+  {
+   "id": "fya",
+   "planta": "F&A",
+   "servicio": "energia",
+   "unidad": "kWh",
+   "archivo": "fya.json",
+   "periodo": {
+    "inicio": "2019-10",
+    "fin": "2026-07",
+    "meses": 82,
+    "fin_comun": "2026-06"
+   },
+   "procesos": [
+    "F&A",
+    "FORMACION",
+    "LINEA ACABADO PRINCIPAL"
+   ],
+   "ultimo_mes": {
+    "fecha": "2026-07",
+    "indice": 1.0,
+    "consumo": 1144675.0,
+    "produccion": 52606.4442,
+    "intensidad": 21.7592,
+    "intensidad_ppto": 18.3321,
+    "desviacion_ppto": 0.1869,
+    "costo_unitario": 529.5777,
+    "costo_total": 606194374.4291
+   },
+   "n_alertas": 1,
+   "tiene_pronostico": true
+  },
+  {
+   "id": "rc-energia",
+   "planta": "RC",
+   "servicio": "energia",
+   "unidad": "kWh",
+   "archivo": "rc-energia.json",
+   "periodo": {
+    "inicio": "2017-10",
+    "fin": "2026-06",
+    "meses": 105,
+    "fin_comun": "2026-06"
+   },
+   "procesos": [
+    "RC"
+   ],
+   "ultimo_mes": {
+    "fecha": "2026-06",
+    "indice": 1.0,
+    "consumo": 359793.0,
+    "produccion": 2092.626,
+    "intensidad": 171.9337,
+    "intensidad_ppto": null,
+    "desviacion_ppto": null,
+    "costo_unitario": null,
+    "costo_total": null
+   },
+   "n_alertas": 0,
+   "tiene_pronostico": true
+  },
+  {
+   "id": "rc-gas",
+   "planta": "RC",
+   "servicio": "gas",
+   "unidad": "m3",
+   "archivo": "rc-gas.json",
+   "periodo": {
+    "inicio": "2017-10",
+    "fin": "2026-06",
+    "meses": 105,
+    "fin_comun": "2026-06"
+   },
+   "procesos": [
+    "RC"
+   ],
+   "ultimo_mes": {
+    "fecha": "2026-06",
+    "indice": 1.0,
+    "consumo": 138825.545,
+    "produccion": 2092.626,
+    "intensidad": 66.3404,
+    "intensidad_ppto": null,
+    "desviacion_ppto": null,
+    "costo_unitario": 1799.419,
+    "costo_total": 249805323.3584
+   },
+   "n_alertas": 0,
+   "tiene_pronostico": true
+  }
+ ]
+}
