@@ -9,9 +9,9 @@ export default defineConfig({
   // Los datos llegan solo por la API (/api/datos). Se mantienen los bloqueos por defecto de Vite.
   server: {
     open: true,
-    //proxy: { '/api': API_TARGET },
+    proxy: { '/api': API_TARGET },
     watch: { ignored: ['**/backend/**'] },
     fs: { deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/backend/**'] }
   },
-  preview: { //proxy: { '/api': API_TARGET } }
+  preview: { proxy: { '/api': API_TARGET } }
 });
