@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Dashboard Industrial SCADA para Plantas de Baterías Clarios - Monitoreo de Energía, Gas y Desviación Presupuestaria ISO 50001">
-  <title>Clarios SCADA | Consola de Monitoreo de Energía & Gas</title>
+  <meta name="description" content="Dashboard de energía y gas de las plantas Clarios: consumo, consumo por unidad, presupuesto, alertas y pronóstico">
+  <title>Clarios | Energía y gas multiplanta</title>
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="assets/clarios-mark.png">
@@ -56,6 +56,12 @@
 
     <!-- Header Actions & Utilities -->
     <div class="header-actions">
+      <!-- Granularidad de los datos: mensual (Excel + pipeline) o diaria (mes en curso) -->
+      <div class="forecast-view-switch granularity-switch" role="group" aria-label="Granularidad de los datos">
+        <button class="forecast-view-btn is-active" type="button" data-granularity="mensual" aria-pressed="true">Mensual</button>
+        <button class="forecast-view-btn" type="button" data-granularity="diaria" aria-pressed="false">Diario</button>
+      </div>
+
       <!-- Interactive Year and Month Filter -->
       <div class="date-filter-group" aria-label="Filtro de Período Operativo">
         <div class="date-select-pill">
@@ -66,6 +72,7 @@
             <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
           <span id="date-filter-scope" class="date-filter-scope">F&amp;A</span>
+          <span id="date-filter-daily" class="date-filter-daily"></span>
           <select id="select-filter-month" class="scada-select" title="Seleccionar Mes">
             <option value="0">Enero</option>
             <option value="1">Febrero</option>
@@ -548,6 +555,64 @@
         </div>
 
         <!-- High-level KPI Summary Row (6-card grid) -->
+        <!-- Seguimiento diario del mes en curso (solo en granularidad diaria) -->
+        <section id="daily-detail-section" class="strategic-analytics-section daily-section">
+          <div class="strategic-analytics-header">
+            <div>
+              <span class="analytics-kicker">SEGUIMIENTO DIARIO · MES EN CURSO</span>
+              <h2 id="daily-title">Avance del mes</h2>
+              <p id="daily-summary"></p>
+            </div>
+            <div class="analytics-header-badges">
+              <span id="daily-days-badge" class="analytics-badge"></span>
+              <span class="analytics-badge danger">DATOS DE DEMOSTRACIÓN</span>
+            </div>
+          </div>
+          <div class="daily-tiles">
+            <article class="analytics-panel daily-tile">
+              <span class="analytics-kicker">CONSUMO A LA FECHA</span>
+              <strong id="daily-consumption" class="daily-tile-value"></strong>
+              <span id="daily-consumption-detail" class="daily-chip"></span>
+              <span id="daily-consumption-note" class="forecast-note"></span>
+            </article>
+            <article class="analytics-panel daily-tile">
+              <span class="analytics-kicker">CONSUMO POR UNIDAD A LA FECHA</span>
+              <strong id="daily-intensity" class="daily-tile-value"></strong>
+              <span id="daily-intensity-detail" class="daily-chip"></span>
+              <span id="daily-intensity-note" class="forecast-note"></span>
+            </article>
+            <article class="analytics-panel daily-tile">
+              <span class="analytics-kicker">CIERRE PROYECTADO DEL MES</span>
+              <strong id="daily-close" class="daily-tile-value"></strong>
+              <span id="daily-close-detail" class="daily-chip"></span>
+              <span id="daily-close-note" class="forecast-note"></span>
+            </article>
+            <article class="analytics-panel daily-tile">
+              <span class="analytics-kicker">META AL CIERRE</span>
+              <strong id="daily-goal" class="daily-tile-value"></strong>
+              <span id="daily-goal-detail" class="daily-chip"></span>
+              <span id="daily-goal-note" class="forecast-note"></span>
+            </article>
+          </div>
+          <article class="analytics-panel">
+            <div class="analytics-panel-heading">
+              <div>
+                <span class="analytics-kicker">CONSUMO DIARIO</span>
+                <h3>Real vs esperado por día</h3>
+              </div>
+              <div class="analytics-chart-legend forecast-legend" aria-label="Leyenda del gráfico">
+                <span class="real">Real</span>
+                <span class="forecast">Esperado</span>
+                <span class="band">Resto del mes (proyección)</span>
+              </div>
+            </div>
+            <div class="analytics-chart-wrap">
+              <svg id="daily-chart" class="analytics-intensity-chart" viewBox="0 0 960 340" role="img" aria-label="Consumo diario del mes en curso"></svg>
+            </div>
+            <p id="daily-chart-note" class="forecast-note"></p>
+          </article>
+        </section>
+
         <div class="detail-kpi-grid">
           <!-- 1. TOTAL kWh -->
           <div id="detail-card-kwh" class="detail-kpi-card">
@@ -849,7 +914,7 @@
              ------------------------------------------------------------------ -->
         <div class="detail-bottom-grid">
 
-          <!-- AUTOMOTIVE TACHOMETER WIDGET (Velocímetro de Demanda Eléctrica) -->
+          <!-- Velocímetro: consumo del mes frente al presupuesto y al rango esperado -->
           <div class="tachometer-card">
             <div class="tachometer-header">
               <span class="tachometer-title">
@@ -857,7 +922,7 @@
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
                 </svg>
-                Velocímetro de Demanda Eléctrica
+                Consumo del mes vs presupuesto
               </span>
               <span id="tachometer-cluster-sub" class="tachometer-cluster-sub"></span>
             </div>
@@ -871,7 +936,7 @@
                   </div>
 
                   <!-- Stitch Vector Tachometer SVG -->
-                  <svg id="stitch-speedometer-svg" class="stitch-gauge-svg" viewBox="0 0 400 232" preserveAspectRatio="xMidYMid meet" aria-label="Demanda eléctrica actual frente al límite presupuestario">
+                  <svg id="stitch-speedometer-svg" class="stitch-gauge-svg" viewBox="0 0 400 232" preserveAspectRatio="xMidYMid meet" aria-label="Consumo del mes frente al presupuesto">
                     <defs>
                       <filter id="redNeonGlow" x="-20%" y="-20%" width="140%" height="140%">
                         <feGaussianBlur stdDeviation="6" result="blur"></feGaussianBlur>
@@ -938,7 +1003,7 @@
 
                   <div class="gauge-center-readout">
                     <span id="gauge-digital-value" class="gauge-digital-kwh over-budget">864,000</span>
-                    <span class="gauge-sublabel">CONSUMO ACUMULADO (HASTA LA FECHA)</span>
+                    <span class="gauge-sublabel">CONSUMO DEL MES</span>
                   </div>
                 </div>
                 <div id="gauge-alert-pill" class="gauge-alert-pill danger">
@@ -955,7 +1020,7 @@
                     <span class="cal-name">Límite presupuestario</span>
                     <span id="cal-promedio-val" class="cal-val">780,000 kWh</span>
                   </div>
-                  <span class="cal-sub">Umbral operativo del período</span>
+                  <span class="cal-sub">Producción del mes × meta de consumo por unidad</span>
                 </div>
 
                 <div class="calibration-item">
@@ -968,7 +1033,7 @@
 
                 <div class="calibration-item">
                   <div class="calibration-row-top">
-                    <span class="cal-name">Posición Actual de Aguja</span>
+                    <span class="cal-name">Consumo del mes</span>
                     <span id="cal-posicion-val" class="cal-val">864,000 kWh</span>
                   </div>
                   <span id="cal-posicion-sub" class="cal-sub red">Zona de Sobreconsumo: +84,000 kWh Exceso</span>
@@ -1045,11 +1110,11 @@
         <div>
           <span class="hero-tagline">GOBIERNO DEL DATO • AUDITORÍA • TRAZABILIDAD</span>
           <h1 class="hero-heading">Fuentes y trazabilidad de datos</h1>
-          <p class="hero-subtext">Consulta el origen de cada dato, abre los archivos disponibles y valida el recorrido desde el Excel fuente hasta los KPIs del dashboard. Para agregar una planta, añade su hoja al Excel (ver plantilla) y vuelve a cargarlo.</p>
+          <p class="hero-subtext">Consulta el origen de cada dato, abre los archivos disponibles y valida el recorrido desde el Excel fuente hasta los KPIs del dashboard. Para agregar meses o una planta, descarga el Excel vigente, agrega las filas o la hoja y vuelve a cargarlo.</p>
         </div>
         <div class="sources-hero-actions">
           <button id="btn-sources-load-data" class="btn-primary-purple" type="button" hidden>⇪ Cargar datos fuente</button>
-          <a id="link-sources-template" class="btn-ghost-sm" href="/api/plantilla" download hidden>Descargar plantilla Excel</a>
+          <a id="link-sources-template" class="btn-ghost-sm" href="/api/fuentes/actual/archivo" download hidden title="Descarga el Excel que usa hoy el pipeline: agrega los meses nuevos y vuelve a cargarlo">Descargar Excel vigente</a>
         </div>
       </section>
 
@@ -1166,14 +1231,14 @@
     <div class="footer-left">
       <div class="footer-item">
         <img src="assets/clarios-mark.png" alt="Clarios Logo" class="footer-clarios-logo">
-        <span>RED DE TELEMETRÍA CLARIOS SCADA • NODO MONTERREY RC-01</span>
+        <span>Clarios · Energía y gas multiplanta · datos mensuales del Excel fuente</span>
       </div>
       <div class="footer-item">
         <span>Gestión de la energía ISO 50001</span>
       </div>
     </div>
     <div>
-      © 2024 Operaciones de Planta Clarios. Todos los derechos reservados.
+      © 2026 DataCats · Reto Clarios
     </div>
   </footer>
 

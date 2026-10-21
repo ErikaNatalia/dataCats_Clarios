@@ -5164,3 +5164,83 @@ body.data-gate-open {
 @media (max-width: 760px) {
   .forecast-chart-tools { align-items: flex-start; }
 }
+
+/* Granularidad diaria: se ocultan los bloques mensuales y se muestra el seguimiento del mes en curso. */
+.granularity-switch {
+  margin-right: 4px;
+}
+
+body:not(.granularity-daily) #daily-detail-section,
+body.granularity-daily .decision-strip,
+body.granularity-daily #kpi-detail-panel,
+body.granularity-daily #alert-thresholds-panel,
+body.granularity-daily .kpi-toggle-hint,
+body.granularity-daily #detail-comparison-period,
+body.granularity-daily .detail-kpi-grid,
+body.granularity-daily #detail-charts-grid,
+body.granularity-daily #strategic-analytics-section,
+body.granularity-daily #forecast-section,
+body.granularity-daily .detail-bottom-grid {
+  display: none !important;
+}
+
+body.granularity-daily .kpi-card-toggle {
+  cursor: default;
+}
+
+.daily-section > .analytics-panel {
+  margin-top: 14px;
+}
+
+.daily-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.daily-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.daily-tile-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  color: var(--text-main);
+}
+
+.daily-chip {
+  align-self: flex-start;
+}
+
+@media (max-width: 1080px) {
+  .daily-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .daily-tiles { grid-template-columns: minmax(0, 1fr); }
+  .granularity-switch { order: 10; }
+}
+
+.trend-chip.trend-warning {
+  background: rgba(255, 171, 0, 0.12);
+  color: var(--amber-warn);
+  border-color: rgba(255, 171, 0, 0.35);
+}
+
+.date-filter-daily {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+body.granularity-daily .date-filter-daily {
+  display: inline;
+}
+
+body.granularity-daily .date-select-pill select {
+  display: none;
+}

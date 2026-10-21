@@ -30,6 +30,9 @@ import * as api from './api.js';
     pipeline: { online: false, excel: null, loads: [], runningJobId: null },
     // Umbral de alerta por planta (fracción) guardado en el backend; las plantas sin valor usan el defecto.
     thresholds: { defecto: 0.10, umbrales: {} },
+    // 'mensual': cortes del Excel. 'diaria': seguimiento del mes en curso (hoy con datos de demostración).
+    granularity: 'mensual',
+    daily: null,
     // Corte común de la vista general (modo pipeline): mes que tienen todas las plantas.
     globalPeriod: null,
     selectedPeriod: null,
@@ -131,6 +134,7 @@ import * as api from './api.js';
     initThresholdsPanel();
     initKpiDetails();
     initForecast();
+    initGranularity();
     startDashboard();
   });
 
@@ -345,7 +349,8 @@ import * as api from './api.js';
       loadButton.hidden = !online;
       loadButton.textContent = DashboardStore.pipeline.runningJobId ? '⟳ Carga en curso…' : '⇪ Cargar datos fuente';
     }
-    if (templateLink) templateLink.hidden = !online;
+    // Descarga el Excel vigente (con todos sus datos) solo si existe; sin Excel se usa la plantilla de la pantalla de espera.
+    if (templateLink) templateLink.hidden = !online || !DashboardStore.pipeline.excel;
   }
 
   function renderSourceLoads() {
@@ -1006,6 +1011,7 @@ import * as api from './api.js';
     ensureDynamicPlantUI();
     recalculatePipelineGlobalMetrics();
     renderPipelineLandingMetrics();
+    const daily = isDailyMode();
     renderLandingBatteryCards();
     renderSidebarCards();
     renderExecutiveSummary();
@@ -1015,6 +1021,7 @@ import * as api from './api.js';
     renderSubheader();
     renderThresholdsPanel();
     renderKpiDetailPanel();
+    if (daily) renderDailyOverview();
   }
 
   // --- UMBRALES DE ALERTA POR PLANTA ---
@@ -1049,6 +1056,7 @@ import * as api from './api.js';
   }
 
   function toggleKpiDetail(key) {
+    if (key && isDailyMode()) return;
     if (openKpiDetail === 'alerts' && key !== 'alerts') thresholdDraft = {};
     openKpiDetail = key;
     Object.entries(KPI_DETAILS).forEach(([name, { card }]) => {
@@ -2293,9 +2301,400 @@ import * as api from './api.js';
     renderProcessBars(currentPlant.processes, currentPlant.processAlert);
     renderStrategicAnalytics(currentPlant);
     renderForecastSection(currentPlant);
+    if (isDailyMode()) {
+      renderDailyOverview();
+      renderDailyDetail(currentPlant);
+    }
 
     // 6. Diagnostic Alert Card
     updateDiagnosticCard(currentPlant);
+  }
+
+  // --- GRANULARIDAD DIARIA: SEGUIMIENTO DEL MES EN CURSO ---
+  // Con datos diarios del mes en curso se combina lo medido con el modelo mensual del pipeline:
+  //   esperado a la fecha = s[d][h] · (días medidos / días del mes) + β[d] · producción acumulada
+  //   cierre proyectado   = acumulado + s[d][h] · (días restantes / días del mes) + β[d] · producción restante
+  // con la producción restante del plan por defecto. Hoy los datos diarios son de demostración.
+  const DAILY_DEMO_URL = '/demo/diario-2026-10.json';
+  const MONTHLY_KPI_TITLES = {};
+
+  function isDailyMode() {
+    return DashboardStore.granularity === 'diaria' && Boolean(DashboardStore.daily);
+  }
+
+  function dailyDaysLoaded() {
+    return Math.max(0, ...Object.values(DashboardStore.daily?.series || {}).map(rows => rows.length));
+  }
+
+  function initGranularity() {
+    document.querySelectorAll('[data-granularity]').forEach(button => {
+      button.addEventListener('click', () => setGranularity(button.dataset.granularity));
+    });
+  }
+
+  async function setGranularity(granularity) {
+    if (granularity === 'diaria' && !DashboardStore.daily) {
+      try {
+        const response = await fetch(DAILY_DEMO_URL, { cache: 'no-store' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        DashboardStore.daily = await response.json();
+      } catch (error) {
+        showToast('No se pudieron cargar los datos diarios: ' + error.message, 'danger');
+        return;
+      }
+    }
+    DashboardStore.granularity = granularity;
+    const daily = isDailyMode();
+    document.body.classList.toggle('granularity-daily', daily);
+    document.querySelectorAll('[data-granularity]').forEach(button => {
+      const active = button.dataset.granularity === granularity;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    if (daily) toggleKpiDetail(null);
+    document.querySelectorAll('.kpi-row-landing .kpi-card').forEach(card => {
+      const title = card.querySelector('.kpi-title');
+      if (title && !MONTHLY_KPI_TITLES[card.id]) MONTHLY_KPI_TITLES[card.id] = title.textContent;
+      if (title && !daily) title.textContent = MONTHLY_KPI_TITLES[card.id];
+    });
+    // El selector de mes no aplica al mes en curso.
+    ['select-filter-month', 'select-filter-year', 'drawer-select-month', 'drawer-select-year'].forEach(id => {
+      const select = document.getElementById(id);
+      if (select) select.disabled = daily;
+    });
+    if (daily) {
+      setElementText('date-filter-scope', 'Mes en curso');
+      setElementText('date-filter-daily', formatMonthLabel(DashboardStore.daily.mes) + ' · 1–' + dailyDaysLoaded());
+    } else {
+      syncPeriodFiltersForView();
+    }
+    renderAllViews();
+    showToast(daily
+      ? 'Vista diaria: ' + formatMonthLabel(DashboardStore.daily.mes) + ', ' + dailyDaysLoaded() + ' de ' + DashboardStore.daily.dias_mes + ' días (datos de demostración).'
+      : 'Vista mensual: cortes del Excel fuente.', 'success');
+  }
+
+  /** Acumulados del mes en curso de una serie y su proyección con las simulaciones del modelo. */
+  function computeDailyPlant(plant) {
+    const daily = DashboardStore.daily;
+    const rows = daily?.series?.[plant.id] || [];
+    if (!rows.length) return null;
+    const totalDays = Number(daily.dias_mes);
+    const days = rows.length;
+    const consumption = rows.reduce((sum, row) => sum + Number(row.consumo || 0), 0);
+    const production = rows.reduce((sum, row) => sum + Number(row.produccion || 0), 0);
+    const cost = rows.reduce((sum, row) => sum + (hasNumericValue(row.costo_unitario) ? Number(row.consumo) * Number(row.costo_unitario) : 0), 0);
+    const tariff = rows.map(row => row.costo_unitario).filter(hasNumericValue).at(-1) ?? null;
+    const result = { plant, rows, days, totalDays, consumption, production, cost: tariff !== null ? cost : null, tariff };
+
+    const reference = performanceReference(plant, daily.mes);
+    result.intensity = production > 0 ? consumption / production : null;
+    result.change = reference && result.intensity !== null ? result.intensity / reference - 1 : null;
+    result.reference = reference;
+    result.isAlert = hasNumericValue(result.change) && result.change > getAlertThreshold(plant);
+    result.goal = budgetTarget(plant, daily.mes, null);
+
+    const data = getForecastData(plant);
+    const h = data ? data.forecast.meses.findIndex(month => month.fecha === daily.mes) : -1;
+    if (h >= 0) {
+      const { scenarios } = data;
+      const share = days / totalDays;
+      const remainingProduction = Number(scenarios.produccion_referencia[h]) * (1 - share);
+      const expected = scenarios.s.map((row, draw) => row[h] * share + scenarios.beta[draw] * production);
+      const close = scenarios.s.map((row, draw) => consumption + row[h] * (1 - share) + scenarios.beta[draw] * remainingProduction);
+      result.expected = summarize(expected);
+      result.close = summarize(close);
+      result.closeProduction = production + remainingProduction;
+      result.dailyBase = summarize(scenarios.s.map(row => row[h] / totalDays)).p50;
+      result.beta = scenarios.beta_resumen?.media;
+      result.planPerDay = Number(scenarios.produccion_referencia[h]) / totalDays;
+      if (hasNumericValue(result.goal)) {
+        const limit = result.goal * result.closeProduction;
+        result.goalProbability = close.filter(value => value > limit).length / close.length;
+        result.closeBudget = limit;
+      }
+    }
+    return result;
+  }
+
+  /** Vista general en modo diario: KPIs del mes a la fecha y tarjetas de planta con el acumulado. */
+  function renderDailyOverview() {
+    const daily = DashboardStore.daily;
+    setElementText('date-filter-scope', 'Mes en curso');
+    const rows = getPipelinePlants().map(computeDailyPlant).filter(Boolean);
+    const energy = rows.filter(row => row.plant.unit === 'kWh');
+    const sum = (list, read) => list.reduce((total, row) => total + (Number(read(row)) || 0), 0);
+    const daysLabel = dailyDaysLoaded() + ' de ' + daily.dias_mes + ' días de ' + formatMonthLabel(daily.mes);
+    const setTitle = (id, text) => {
+      const title = document.getElementById(id)?.querySelector('.kpi-title');
+      if (title) title.textContent = text;
+    };
+    const year = Number(daily.mes.slice(0, 4)) - 1;
+
+    // 1. Consumo eléctrico a la fecha vs esperado con la producción real.
+    const consumption = sum(energy, row => row.consumption);
+    const expected = sum(energy, row => row.expected?.p50);
+    const energyRatio = expected ? consumption / expected : null;
+    setTitle('landing-kpi-energy-card', 'Consumo del mes a la fecha');
+    renderKpiCard('kwh', {
+      value: formatNumber(Math.round(consumption)), unit: 'kWh',
+      note: energyRatio ? 'Se consumió ' + moreOrLess((energyRatio - 1) * 100) + ' de lo esperado para lo producido' : 'Sin modelo para comparar',
+      baseline: 'Esperado: ' + formatNumber(Math.round(expected)) + ' kWh · ' + daysLabel,
+      state: trafficLight(energyRatio),
+      title: 'Consumo eléctrico acumulado del mes frente al esperado por el modelo con la producción real de esos días.'
+    });
+
+    // 2. Gasto a la fecha.
+    const cost = sum(rows, row => row.cost);
+    const expectedCost = sum(rows, row => (row.tariff ? row.expected?.p50 * row.tariff : 0));
+    const costRatio = expectedCost ? cost / expectedCost : null;
+    setTitle('landing-kpi-cost-card', 'Gasto del mes a la fecha');
+    renderKpiCard('cost', {
+      value: formatMillionsCop(cost), unit: 'COP',
+      note: costRatio ? 'Se gastó ' + moreOrLess((costRatio - 1) * 100) + ' de lo esperado a la fecha' : 'Sin tarifa para comparar',
+      baseline: 'Esperado: ' + formatMillionsCop(expectedCost) + ' COP · tarifa del mes',
+      state: trafficLight(costRatio),
+      title: 'Consumo acumulado × tarifa del mes de cada serie con costo.'
+    });
+
+    // 3. Consumo por unidad global a la fecha vs el promedio del año anterior.
+    const withReference = energy.filter(row => row.reference && row.production > 0);
+    const actual = sum(withReference, row => row.consumption);
+    const expectedByReference = sum(withReference, row => row.production * row.reference);
+    const index = expectedByReference ? actual / expectedByReference : null;
+    setTitle('landing-kpi-performance-card', 'Consumo por unidad a la fecha');
+    renderKpiCard('performance', {
+      value: index ? formatDecimal(Math.abs(index - 1) * 100, 1) + '%' : 'n.a.',
+      unit: index ? (index > 1 ? 'peor' : 'mejor') : '',
+      note: index ? 'Por unidad producida se consumió ' + moreOrLess((index - 1) * 100) + ' que en ' + year : 'Sin referencia de ' + year,
+      baseline: 'Real ' + formatNumber(Math.round(actual)) + ' · esperado ' + formatNumber(Math.round(expectedByReference)) + ' kWh',
+      state: trafficLight(index),
+      title: 'Consumo acumulado / (producción acumulada × consumo por unidad promedio de ' + year + ').'
+    });
+
+    // 4. Cierre proyectado frente al presupuesto (plantas con presupuesto).
+    const budgetRows = energy.filter(row => hasNumericValue(row.closeBudget));
+    const closeTotal = sum(budgetRows, row => row.close?.p50);
+    const budgetTotal = sum(budgetRows, row => row.closeBudget);
+    const deviation = budgetTotal ? (closeTotal / budgetTotal - 1) * 100 : null;
+    setTitle('landing-kpi-deviation-card', 'Cierre proyectado vs presupuesto');
+    renderKpiCard('deviation', {
+      value: hasNumericValue(deviation) ? formatDecimal(Math.abs(deviation), 1) + '%' : 'n.a.',
+      note: hasNumericValue(deviation) ? 'Al cierre se gastaría ' + moreOrLess(deviation) + ' que el presupuesto del mes' : 'Sin presupuesto',
+      baseline: 'Cierre ' + formatNumber(Math.round(closeTotal)) + ' · presupuesto ' + formatNumber(Math.round(budgetTotal)) + ' kWh',
+      state: hasNumericValue(deviation) ? trafficLight(1 + deviation / 100) : 'neutral',
+      title: 'Cierre proyectado = acumulado + resto del mes con el plan de producción por defecto. Presupuesto = producción proyectada × meta.'
+    });
+
+    // 5. Plantas con alerta a la fecha (misma regla y umbrales que la vista mensual).
+    const alerts = rows.filter(row => row.isAlert);
+    setTitle('landing-kpi-alerts-card', 'Estado de plantas a la fecha');
+    renderKpiCard('alerts', {
+      value: String(alerts.length),
+      unit: alerts.length === 1 ? 'planta con alerta' : 'plantas con alerta',
+      note: 'Consumo por unidad a la fecha sobre el umbral de la planta frente a su promedio ' + year,
+      baseline: alerts.length ? alerts.map(row => row.plant.name + ' (+' + formatDecimal(row.change * 100, 0) + '%)').join(' · ') : 'Todas dentro de su umbral',
+      state: alerts.length ? 'negative' : 'positive',
+      title: 'Misma regla y umbrales que la vista mensual, con el acumulado del mes.'
+    });
+
+    renderDailyPlantCards(rows);
+  }
+
+  function renderDailyPlantCards(rows) {
+    const alertCount = rows.filter(row => row.isAlert).length;
+    setElementText('legend-normal-count', (rows.length - alertCount) + ' en rango');
+    setElementText('legend-critical-count', alertCount + ' con alerta');
+    rows.forEach(row => {
+      const { plant } = row;
+      const vsExpected = row.expected?.p50 ? (row.consumption / row.expected.p50 - 1) * 100 : null;
+      const card = document.querySelector(`.car-battery-card[data-plant-id="${plant.id}"]`);
+      if (card) {
+        card.classList.toggle('critical', row.isAlert);
+        const kwh = card.querySelector('.battery-metric-kwh');
+        if (kwh) {
+          kwh.textContent = formatConsumption(plant, Math.round(row.consumption));
+          kwh.style.color = row.isAlert ? 'var(--fire-red)' : '';
+        }
+        setNodeText(card.querySelector('.battery-metric-label'), 'Consumo a la fecha · ' + row.days + ' días');
+        const chip = card.querySelector('.plant-trend-chip');
+        if (chip) {
+          chip.className = 'plant-trend-chip trend-chip trend-' + (hasNumericValue(vsExpected) ? trafficLight(1 + vsExpected / 100) : 'neutral');
+          chip.textContent = hasNumericValue(vsExpected) ? formatSigned(vsExpected, 1) + '% vs esperado' : 'Sin modelo';
+        }
+        setNodeText(card.querySelector('.submetric-ratio'), hasNumericValue(row.intensity) ? formatDecimal(row.intensity, 2) + ' ' + getPlantIntensityUnit(plant) : 'n.a.');
+        setNodeText(card.querySelector('.submetric-cost'), hasNumericValue(row.cost) ? formatCurrencyCop(row.cost, true) : 'n.a.');
+        const dev = card.querySelector('.submetric-dev');
+        if (dev) {
+          const closeDev = hasNumericValue(row.closeBudget) ? (row.close.p50 / row.closeBudget - 1) * 100 : null;
+          dev.textContent = hasNumericValue(closeDev) ? formatSigned(closeDev, 1) + '% al cierre' : 'n.a. Sin presupuesto';
+          dev.className = 'submetric-val submetric-dev ' + (hasNumericValue(closeDev) ? (closeDev > 0 ? 'red' : 'green') : '');
+        }
+        const tag = card.querySelector('.battery-alert-tag');
+        if (tag) {
+          tag.className = 'battery-alert-tag ' + (row.isAlert ? 'tag-danger' : 'tag-success');
+          tag.textContent = row.isAlert ? 'CON ALERTA' : 'EN RANGO';
+        }
+        const sparkLabels = card.querySelectorAll('.sparkline-label span');
+        if (sparkLabels.length >= 2) {
+          sparkLabels[0].textContent = 'Consumo diario · ' + row.days + ' días';
+          sparkLabels[1].textContent = row.isAlert ? 'Requiere atención' : 'En rango';
+        }
+        renderMiniSparkline(card.querySelector('.sparkline-svg'), row.rows.map(item => Number(item.consumo)), row.isAlert ? '#FF3D57' : '#00E676');
+      }
+      const side = document.querySelector(`.sidebar-battery-card[data-plant-id="${plant.id}"]`);
+      if (side) {
+        side.classList.toggle('danger', row.isAlert);
+        const value = side.querySelector('.sidebar-kwh-value');
+        if (value) {
+          const unit = document.createElement('span');
+          unit.textContent = getPlantConsumptionUnit(plant) + ' · ' + row.days + ' días';
+          value.replaceChildren(document.createTextNode(formatNumber(Math.round(row.consumption)) + ' '), unit);
+          value.style.color = row.isAlert ? 'var(--fire-red)' : '';
+        }
+        const state = side.querySelector('.sidebar-card-bottom > span:first-child');
+        if (state) {
+          state.className = 'sidebar-state ' + (row.isAlert ? 'danger' : 'normal');
+          state.textContent = row.isAlert ? '▲ CON ALERTA' : '● EN RANGO';
+        }
+        side.querySelector('.alert-message-sub')?.remove();
+        const metrics = side.querySelectorAll('.sidebar-submetrics-row .val');
+        if (metrics.length >= 3) {
+          const closeDev = hasNumericValue(row.closeBudget) ? (row.close.p50 / row.closeBudget - 1) * 100 : null;
+          metrics[0].textContent = hasNumericValue(row.intensity) ? formatDecimal(row.intensity, 2) : 'n.a.';
+          metrics[1].textContent = hasNumericValue(row.cost) ? formatCurrencyCop(row.cost, true) : 'n.a.';
+          metrics[1].title = 'Gasto acumulado del mes';
+          metrics[2].textContent = hasNumericValue(closeDev) ? formatSigned(closeDev, 1) + '%' : 'n.a.';
+          metrics[2].title = 'Cierre proyectado vs presupuesto';
+          metrics[2].style.color = hasNumericValue(closeDev) ? (closeDev > 0 ? 'var(--fire-red)' : 'var(--neon-green)') : 'var(--text-muted)';
+        }
+      }
+    });
+  }
+
+  function setNodeText(node, text) {
+    if (node) node.textContent = text;
+  }
+
+  /** Detalle de planta en modo diario: acumulado, consumo por unidad, cierre proyectado y meta. */
+  function renderDailyDetail(plant) {
+    const row = computeDailyPlant(plant);
+    const section = document.getElementById('daily-detail-section');
+    if (!section) return;
+    if (!row) {
+      setElementText('daily-title', 'Avance del mes · ' + plant.name);
+      setElementText('daily-summary', 'Esta planta no tiene datos diarios cargados.');
+      return;
+    }
+    const daily = DashboardStore.daily;
+    const unit = getPlantConsumptionUnit(plant);
+    const intensityUnit = getPlantIntensityUnit(plant);
+    const year = Number(daily.mes.slice(0, 4)) - 1;
+    const chip = (id, text, state) => {
+      const element = document.getElementById(id);
+      if (!element) return;
+      element.className = 'daily-chip trend-chip trend-' + state;
+      element.textContent = text;
+    };
+    setElementText('daily-title', 'Avance del mes · ' + plant.name);
+    setElementText('daily-summary', 'Medido del 1 al ' + row.days + ' de ' + formatMonthLabel(daily.mes)
+      + '. El resto del mes se proyecta con el modelo mensual y el plan de producción por defecto.');
+    setElementText('daily-days-badge', row.days + ' DE ' + row.totalDays + ' DÍAS');
+    const pill = document.getElementById('detail-header-status-pill');
+    if (pill) {
+      pill.className = 'status-badge-live ' + (row.isAlert ? 'danger' : 'normal');
+      pill.lastElementChild.textContent = row.isAlert ? '▲ PLANTA CON ALERTA' : '● PLANTA EN RANGO';
+    }
+
+    const vsExpected = row.expected?.p50 ? (row.consumption / row.expected.p50 - 1) * 100 : null;
+    setElementText('daily-consumption', formatConsumption(plant, Math.round(row.consumption)));
+    chip('daily-consumption-detail', hasNumericValue(vsExpected) ? formatSigned(vsExpected, 1) + '% vs esperado' : 'Sin modelo',
+      hasNumericValue(vsExpected) ? trafficLight(1 + vsExpected / 100) : 'neutral');
+    setElementText('daily-consumption-note', row.expected
+      ? 'Esperado para ' + formatNumber(Math.round(row.production)) + ' ECU producidas: ' + formatConsumption(plant, Math.round(row.expected.p50))
+      : '');
+
+    setElementText('daily-intensity', hasNumericValue(row.intensity) ? formatDecimal(row.intensity, 2) + ' ' + intensityUnit : 'n.a.');
+    chip('daily-intensity-detail', hasNumericValue(row.change) ? formatSigned(row.change * 100, 1) + '% vs ' + year : 'Sin referencia',
+      hasNumericValue(row.change) ? (row.change <= 0 ? 'positive' : (row.isAlert ? 'negative' : 'warning')) : 'neutral');
+    setElementText('daily-intensity-note', row.reference
+      ? 'Promedio ' + year + ': ' + formatDecimal(row.reference, 2) + ' ' + intensityUnit + ' · umbral de alerta ' + formatDecimal(getAlertThreshold(plant) * 100, 0) + '%'
+      : '');
+
+    setElementText('daily-close', row.close ? formatConsumption(plant, Math.round(row.close.p50)) : 'n.a.');
+    const closeDev = hasNumericValue(row.closeBudget) ? (row.close.p50 / row.closeBudget - 1) * 100 : null;
+    chip('daily-close-detail', hasNumericValue(closeDev) ? formatSigned(closeDev, 1) + '% vs presupuesto' : 'Sin presupuesto',
+      hasNumericValue(closeDev) ? trafficLight(1 + closeDev / 100) : 'neutral');
+    setElementText('daily-close-note', row.close
+      ? 'Rango 95 %: ' + formatCompactNumber(row.close.p2_5) + ' – ' + formatCompactNumber(row.close.p97_5) + ' ' + unit
+        + (hasNumericValue(row.closeBudget) ? ' · presupuesto ' + formatConsumption(plant, Math.round(row.closeBudget)) : '')
+      : '');
+
+    if (hasNumericValue(row.goalProbability)) {
+      const probability = row.goalProbability;
+      setElementText('daily-goal', formatDecimal(probability * 100, 0) + '%');
+      chip('daily-goal-detail', 'probabilidad de superar la meta', probability > 0.5 ? 'negative' : probability > 0.2 ? 'warning' : 'positive');
+      setElementText('daily-goal-note', 'Meta ' + formatDecimal(row.goal, 2) + ' ' + intensityUnit + '. Proyección al cierre: '
+        + formatDecimal(row.close.p50 / row.closeProduction, 2) + ' ' + intensityUnit + '.');
+    } else {
+      setElementText('daily-goal', 'n.a.');
+      chip('daily-goal-detail', 'Sin meta de presupuesto', 'neutral');
+      setElementText('daily-goal-note', 'La planta no tiene presupuesto; la meta se puede fijar en el pronóstico mensual.');
+    }
+    renderDailyChart(plant, row);
+  }
+
+  function renderDailyChart(plant, row) {
+    const svg = document.getElementById('daily-chart');
+    if (!svg) return;
+    svg.replaceChildren();
+    const width = 960;
+    const height = 340;
+    const padding = { top: 22, right: 24, bottom: 38, left: 64 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const days = row.totalDays;
+    // Esperado de cada día medido con su producción; para los días restantes, con el plan por día.
+    const expectedDay = production => (row.dailyBase ?? 0) + (row.beta ?? 0) * production;
+    const real = row.rows.map(item => Number(item.consumo));
+    const expected = row.rows.map(item => expectedDay(Number(item.produccion)));
+    const projected = row.beta ? expectedDay(row.planPerDay) : null;
+    const maxValue = Math.max(...real, ...expected, projected || 0) * 1.15;
+    const slot = chartWidth / days;
+    const getX = day => padding.left + slot * (day - 0.5);
+    const getY = value => padding.top + chartHeight - (value / maxValue) * chartHeight;
+
+    for (let index = 0; index <= 4; index++) {
+      const y = padding.top + (chartHeight / 4) * index;
+      svg.appendChild(createSvgElement('line', { x1: padding.left, y1: y, x2: width - padding.right, y2: y, stroke: 'var(--border-bright)', 'stroke-width': 1 }));
+      svg.appendChild(createSvgElement('text', {
+        x: padding.left - 8, y: y + 3, 'text-anchor': 'end', fill: 'var(--text-muted)', 'font-size': 10, 'font-family': 'var(--font-mono)'
+      }, formatCompactNumber(maxValue - (maxValue / 4) * index)));
+    }
+    // Resto del mes: proyección diaria con el plan.
+    if (projected) {
+      for (let day = row.days + 1; day <= days; day++) {
+        svg.appendChild(createSvgElement('rect', {
+          x: getX(day) - slot * 0.32, y: getY(projected), width: slot * 0.64, height: chartHeight + padding.top - getY(projected),
+          fill: 'rgba(0, 216, 255, 0.12)', rx: 2
+        }));
+      }
+    }
+    real.forEach((value, index) => {
+      const day = index + 1;
+      const over = value > expected[index] * (1 + NORMAL_MARGIN);
+      svg.appendChild(createSvgElement('rect', {
+        x: getX(day) - slot * 0.32, y: getY(value), width: slot * 0.64, height: chartHeight + padding.top - getY(value),
+        fill: over ? '#FF3D57' : '#9E7DFF', rx: 2
+      }));
+    });
+    const expectedPath = expected.map((value, index) => (index ? 'L' : 'M') + ' ' + getX(index + 1).toFixed(1) + ' ' + getY(value).toFixed(1)).join(' ');
+    svg.appendChild(createSvgElement('path', { d: expectedPath, fill: 'none', stroke: '#00D8FF', 'stroke-width': 2.2, 'stroke-dasharray': '6 4' }));
+    [1, 5, 10, 15, 20, 25, days].forEach(day => {
+      svg.appendChild(createSvgElement('text', { x: getX(day), y: height - 12, 'text-anchor': 'middle', fill: 'var(--text-muted)', 'font-size': 10 }, String(day)));
+    });
+    setElementText('daily-chart-note', 'Barras rojas: días más de ' + (NORMAL_MARGIN * 100) + ' % sobre lo esperado para su producción. '
+      + 'Esperado por día = consumo base del modelo + ' + formatDecimal(row.beta, 2) + ' ' + getPlantConsumptionUnit(plant) + ' por ECU producida.');
   }
 
   // --- PRONÓSTICO Y ESCENARIOS ---
@@ -2649,7 +3048,7 @@ import * as api from './api.js';
       + ') con ' + formatNumber(Math.round(production)) + ' ' + getIntensityDenominator(plant.analytics.intensityUnit) + ' producidas.');
   }
 
-  // --- AUTOMOTIVE TACHOMETER (VELOCÍMETRO DE DEMANDA ELÉCTRICA) ---
+  // --- VELOCÍMETRO: CONSUMO DEL MES VS PRESUPUESTO ---
   let currentAnimatedKwh = 0;
   let targetKwh = 0;
   let currentBudgetKwh = null;
@@ -2694,13 +3093,13 @@ import * as api from './api.js';
     if (posValEl) posValEl.textContent = formatConsumption(plant, newKwh);
     if (posSubEl) {
       if (!hasNumericValue(exceso)) {
-        posSubEl.textContent = 'El corte no declara una meta energética';
+        posSubEl.textContent = 'El corte no tiene presupuesto';
         posSubEl.className = 'cal-sub';
       } else if (exceso > 0) {
-        posSubEl.textContent = 'Zona de Sobreconsumo: +' + formatConsumption(plant, exceso) + ' Exceso';
+        posSubEl.textContent = 'Sobre el presupuesto: +' + formatConsumption(plant, exceso);
         posSubEl.className = 'cal-sub red';
       } else {
-        posSubEl.textContent = 'Margen de Seguridad: ' + formatConsumption(plant, Math.abs(exceso)) + ' Restante';
+        posSubEl.textContent = 'Bajo el presupuesto: ' + formatConsumption(plant, Math.abs(exceso));
         posSubEl.className = 'cal-sub green';
       }
     }
@@ -2715,7 +3114,7 @@ import * as api from './api.js';
 
     const dialStatus = document.getElementById('cal-dial-status');
     if (dialStatus) {
-      dialStatus.textContent = !hasNumericValue(exceso) ? 'SIN META DISPONIBLE' : (exceso > 0 ? 'SOBRECONSUMO' : 'OPERACIÓN BALANCEADA');
+      dialStatus.textContent = !hasNumericValue(exceso) ? 'SIN PRESUPUESTO' : (exceso > 0 ? 'SOBRE PRESUPUESTO' : 'DENTRO DEL PRESUPUESTO');
       dialStatus.className = hasNumericValue(exceso) && exceso > 0 ? 'active' : '';
     }
 
@@ -2766,7 +3165,7 @@ import * as api from './api.js';
       budgetLabel.setAttribute('x', (point.x + (onRight ? -8 : 8)).toFixed(1));
       budgetLabel.setAttribute('y', Math.max(24, point.y - 14).toFixed(1));
       budgetLabel.setAttribute('text-anchor', onRight ? 'end' : 'start');
-      budgetLabel.textContent = 'META ' + formatGaugeValue(budgetKwh);
+      budgetLabel.textContent = 'PPTO ' + formatGaugeValue(budgetKwh);
     }
     if (alertSector) {
       alertSector.setAttribute('d', `M ${point.x.toFixed(1)},${point.y.toFixed(1)} A 160,160 0 0,1 360,200`);
@@ -2842,15 +3241,15 @@ import * as api from './api.js';
     if (gaugeAlertPill) {
       if (!hasBudget) {
         gaugeAlertPill.className = 'gauge-alert-pill';
-        gaugeAlertPill.textContent = 'Meta no disponible para el corte seleccionado';
+        gaugeAlertPill.textContent = 'Sin presupuesto para el corte seleccionado';
       } else if (isOverBudget) {
         const pctOver = formatDecimal(((kwh - budget) / budget) * 100, 1);
         gaugeAlertPill.className = 'gauge-alert-pill danger';
-        gaugeAlertPill.textContent = `Límite superado: +${pctOver}% sobre la meta de ${formatConsumption(DashboardStore.plants[DashboardStore.currentPlantId], budget)}`;
+        gaugeAlertPill.textContent = `+${pctOver}% sobre el presupuesto de ${formatConsumption(DashboardStore.plants[DashboardStore.currentPlantId], budget)}`;
       } else {
         const pctOver = formatDecimal(((kwh - budget) / budget) * 100, 1);
         gaugeAlertPill.className = 'gauge-alert-pill normal';
-        gaugeAlertPill.textContent = `Consumo en rango: ${Math.abs(pctOver)}% bajo la meta`;
+        gaugeAlertPill.textContent = `${Math.abs(pctOver)}% bajo el presupuesto`;
       }
     }
   }
@@ -3925,7 +4324,10 @@ import * as api from './api.js';
     setElementText('subheader-node-name', location.toUpperCase());
 
     const period = view === 'detail' ? plant?.currentPeriod : DashboardStore.globalPeriod;
-    const dataStatus = period ? 'DATOS AL CORTE ' + formatMonthLabel(period).toUpperCase() : 'DATOS MENSUALES';
+    const daily = isDailyMode() ? DashboardStore.daily : null;
+    const dataStatus = daily
+      ? 'DATOS DIARIOS · 1–' + dailyDaysLoaded() + ' ' + formatMonthLabel(daily.mes).toUpperCase() + ' · DEMO'
+      : (period ? 'DATOS AL CORTE ' + formatMonthLabel(period).toUpperCase() : 'DATOS MENSUALES');
     setElementText('subheader-data-status', dataStatus);
     setElementText('drawer-data-status', dataStatus);
     setElementText('sync-timer-label', 'Pipeline generado el ' + formatGeneratedDate(DashboardStore.pipeline.generatedAt));

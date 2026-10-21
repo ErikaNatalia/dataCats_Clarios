@@ -7,6 +7,7 @@ Rutas:
   GET  /api/salud                      estado del servicio
   GET  /api/plantilla                  plantilla_clarios.xlsx
   GET  /api/fuentes/actual             Excel vigente: hojas detectadas y última carga
+  GET  /api/fuentes/actual/archivo     descarga el Excel vigente tal cual (para agregar meses y volver a cargarlo)
   GET  /api/fuentes/historial          cargas anteriores
   POST /api/fuentes/validar            sube un Excel (campo `archivo`): validación + cambios; deja un token
   POST /api/fuentes/{token}/aplicar    reemplaza el Excel y corre el pipeline (job en segundo plano)
@@ -58,6 +59,15 @@ def fuente_actual():
     return {"archivo": config.SOURCE_XLSX.name, "tamano": st.st_size,
             "modificado": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds"),
             "validacion": ingest.validar(), "ultima_carga": fuentes.job()}
+
+
+@app.get("/api/fuentes/actual/archivo")
+def descargar_fuente_actual():
+    # Se envía el archivo sin abrirlo: openpyxl perdería los valores calculados de las fórmulas.
+    if not config.SOURCE_XLSX.exists():
+        raise HTTPException(404, "no hay Excel fuente")
+    fecha = datetime.fromtimestamp(config.SOURCE_XLSX.stat().st_mtime).strftime("%Y-%m-%d")
+    return FileResponse(config.SOURCE_XLSX, media_type=XLSX, filename=f"{config.SOURCE_XLSX.stem} (vigente {fecha}).xlsx")
 
 
 @app.get("/api/fuentes/historial")

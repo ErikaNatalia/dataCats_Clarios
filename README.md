@@ -160,12 +160,14 @@ los meses que tienen todas las plantas; dentro de una planta, los de esa planta.
 
 Si el backend responde pero aún no hay JSON generados, el dashboard pide cargar el Excel fuente.
 
-## Agregar una planta
+## Agregar meses o una planta
 
-Una planta nueva es una hoja nueva en el Excel fuente. Descarga la plantilla en **Fuentes de datos →
-Descargar plantilla Excel**, agrega la hoja con el mismo formato y vuelve a cargar el Excel con
-**Cargar datos fuente**: el pipeline la detecta y regenera todos los JSON (indicadores, alertas y
-pronósticos).
+Para agregar meses o una planta, descarga el Excel que usa hoy el pipeline en **Fuentes de datos →
+Descargar Excel vigente** (se descarga tal cual, con todos sus datos), agrega las filas de los meses
+nuevos o la hoja de la planta nueva y vuelve a cargarlo con **Cargar datos fuente**: la validación
+muestra solo lo que cambió antes de aplicar, y el pipeline regenera todos los JSON. El formato de una
+hoja nueva está en la plantilla (`/api/plantilla`, hoja Instrucciones). El archivo descargado contiene
+datos privados de Clarios: no lo subas al repositorio.
 
 ## Controles operativos y evidencia del dato
 
